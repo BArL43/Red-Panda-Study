@@ -1,0 +1,342 @@
+package app
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrForbidden     = errors.New("forbidden")
+	ErrInviteUsed    = errors.New("invitation already used")
+	ErrInviteExpired = errors.New("invitation expired")
+	ErrConflict      = errors.New("conflict")
+)
+
+type Store struct {
+	db *sql.DB
+}
+
+func OpenStore(path string) (*Store, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return nil, fmt.Errorf("create database directory: %w", err)
+	}
+	dsn := fmt.Sprintf("file:%s?_busy_timeout=5000&_foreign_keys=on&_journal_mode=WAL&_synchronous=NORMAL", path)
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1)
+	store := &Store{db: db}
+	if err := store.migrate(context.Background()); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return store, nil
+}
+
+func (s *Store) Close() error { return s.db.Close() }
+
+func (s *Store) migrate(ctx context.Context) error {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			role TEXT NOT NULL CHECK(role IN ('admin','student','mentor')),
+			name TEXT NOT NULL,
+			email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+			status TEXT NOT NULL DEFAULT 'active',
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS admin_credentials (
+			user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			password_hash TEXT NOT NULL,
+			password_salt TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS invitations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			token_hash TEXT NOT NULL UNIQUE,
+			role TEXT NOT NULL CHECK(role IN ('student','mentor')),
+			name TEXT NOT NULL,
+			email TEXT NOT NULL COLLATE NOCASE,
+			expires_at TEXT NOT NULL,
+			used_at TEXT,
+			created_by INTEGER NOT NULL REFERENCES users(id),
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS sessions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			token_hash TEXT NOT NULL UNIQUE,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			expires_at TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS consultations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			contact TEXT NOT NULL,
+			country TEXT NOT NULL,
+			level TEXT NOT NULL,
+			intake TEXT NOT NULL,
+			notes TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'new',
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS student_profiles (
+			user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			country TEXT NOT NULL DEFAULT 'Не выбрано',
+			level TEXT NOT NULL DEFAULT 'Не выбрано',
+			intake TEXT NOT NULL DEFAULT 'Не выбрано',
+			progress INTEGER NOT NULL DEFAULT 12
+		)`,
+		`CREATE TABLE IF NOT EXISTS mentor_assignments (
+			mentor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			created_at TEXT NOT NULL,
+			PRIMARY KEY (mentor_id, student_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS tasks (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			assigned_by INTEGER NOT NULL REFERENCES users(id),
+			title TEXT NOT NULL,
+			description TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'todo',
+			due_at TEXT,
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS conversations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			kind TEXT NOT NULL CHECK(kind IN ('public','student')),
+			visitor_token_hash TEXT,
+			user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+			subject TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'open',
+			assigned_to INTEGER REFERENCES users(id),
+			display_name TEXT NOT NULL DEFAULT 'Гость',
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS messages (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+			sender_type TEXT NOT NULL CHECK(sender_type IN ('visitor','student','mentor','admin','system')),
+			sender_user_id INTEGER REFERENCES users(id),
+			sender_name TEXT NOT NULL,
+			body TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS audit_log (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			actor_user_id INTEGER REFERENCES users(id),
+			action TEXT NOT NULL,
+			entity_type TEXT NOT NULL,
+			entity_id INTEGER,
+			metadata TEXT NOT NULL DEFAULT '{}',
+			created_at TEXT NOT NULL
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_hash ON sessions(token_hash)`,
+		`CREATE INDEX IF NOT EXISTS idx_invitations_hash ON invitations(token_hash)`,
+		`CREATE INDEX IF NOT EXISTS idx_consultations_created ON consultations(created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id, status)`,
+		`CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)`,
+	}
+	for _, statement := range statements {
+		if _, err := s.db.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("migration failed: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) SeedAdmin(ctx context.Context, email, password string) (User, error) {
+	var user User
+	row := s.db.QueryRowContext(ctx, `SELECT id, role, name, email, status, created_at FROM users WHERE email = ?`, normalizeEmail(email))
+	if err := scanUser(row, &user); err == nil {
+		return user, nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return User{}, err
+	}
+
+	hash, salt, err := hashPassword(password)
+	if err != nil {
+		return User{}, err
+	}
+	now := time.Now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return User{}, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, `INSERT INTO users(role, name, email, status, created_at) VALUES('admin', 'Администратор', ?, 'active', ?)`, normalizeEmail(email), formatTime(now))
+	if err != nil {
+		return User{}, err
+	}
+	id, _ := result.LastInsertId()
+	if _, err := tx.ExecContext(ctx, `INSERT INTO admin_credentials(user_id, password_hash, password_salt, updated_at) VALUES(?, ?, ?, ?)`, id, hash, salt, formatTime(now)); err != nil {
+		return User{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return User{}, err
+	}
+	return User{ID: id, Role: "admin", Name: "Администратор", Email: normalizeEmail(email), Status: "active", CreatedAt: now}, nil
+}
+
+func (s *Store) AuthenticateAdmin(ctx context.Context, email, password string) (User, error) {
+	var user User
+	var hash, salt string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT u.id, u.role, u.name, u.email, u.status, u.created_at, c.password_hash, c.password_salt
+		FROM users u JOIN admin_credentials c ON c.user_id = u.id
+		WHERE u.email = ? AND u.role = 'admin' AND u.status = 'active'`,
+		normalizeEmail(email),
+	).Scan(&user.ID, &user.Role, &user.Name, &user.Email, &user.Status, timeScanner{target: &user.CreatedAt}, &hash, &salt)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !verifyPassword(password, hash, salt)) {
+		return User{}, ErrForbidden
+	}
+	return user, err
+}
+
+func (s *Store) CreateSession(ctx context.Context, userID int64, ttl time.Duration) (string, error) {
+	raw, err := randomToken(32)
+	if err != nil {
+		return "", err
+	}
+	now := time.Now().UTC()
+	_, err = s.db.ExecContext(ctx, `INSERT INTO sessions(token_hash, user_id, expires_at, created_at) VALUES(?, ?, ?, ?)`,
+		tokenHash(raw), userID, formatTime(now.Add(ttl)), formatTime(now))
+	return raw, err
+}
+
+func (s *Store) SessionUser(ctx context.Context, raw string) (SessionUser, error) {
+	var user SessionUser
+	var expires string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT u.id, u.role, u.name, u.email, s.expires_at
+		FROM sessions s JOIN users u ON u.id = s.user_id
+		WHERE s.token_hash = ? AND u.status = 'active'`, tokenHash(raw),
+	).Scan(&user.ID, &user.Role, &user.Name, &user.Email, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SessionUser{}, ErrForbidden
+	}
+	if err != nil {
+		return SessionUser{}, err
+	}
+	expiry, _ := parseTime(expires)
+	if time.Now().UTC().After(expiry) {
+		s.DeleteSession(ctx, raw)
+		return SessionUser{}, ErrForbidden
+	}
+	return user, nil
+}
+
+func (s *Store) DeleteSession(ctx context.Context, raw string) {
+	_, _ = s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, tokenHash(raw))
+}
+
+func (s *Store) CleanupExpired(ctx context.Context) {
+	now := formatTime(time.Now().UTC())
+	_, _ = s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, now)
+}
+
+func (s *Store) CreateConsultation(ctx context.Context, item Consultation) (Consultation, error) {
+	now := time.Now().UTC()
+	result, err := s.db.ExecContext(ctx, `
+		INSERT INTO consultations(name, contact, country, level, intake, notes, status, created_at)
+		VALUES(?, ?, ?, ?, ?, ?, 'new', ?)`,
+		item.Name, item.Contact, item.Country, item.Level, item.Intake, item.Notes, formatTime(now))
+	if err != nil {
+		return Consultation{}, err
+	}
+	item.ID, _ = result.LastInsertId()
+	item.Status = "new"
+	item.CreatedAt = now
+	_ = s.audit(ctx, nil, "consultation.created", "consultation", item.ID, map[string]any{"country": item.Country})
+	return item, nil
+}
+
+func (s *Store) ListConsultations(ctx context.Context) ([]Consultation, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, contact, country, level, intake, notes, status, created_at FROM consultations ORDER BY id DESC LIMIT 200`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]Consultation, 0)
+	for rows.Next() {
+		var item Consultation
+		if err := rows.Scan(&item.ID, &item.Name, &item.Contact, &item.Country, &item.Level, &item.Intake, &item.Notes, &item.Status, timeScanner{target: &item.CreatedAt}); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Store) UpdateConsultationStatus(ctx context.Context, actorID, id int64, status string) error {
+	if status != "new" && status != "contacted" && status != "qualified" && status != "closed" {
+		return ErrConflict
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE consultations SET status = ? WHERE id = ?`, status, id)
+	if err != nil {
+		return err
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return s.audit(ctx, &actorID, "consultation.status_changed", "consultation", id, map[string]any{"status": status})
+}
+
+func formatTime(value time.Time) string { return value.UTC().Format(time.RFC3339Nano) }
+
+func parseTime(value string) (time.Time, error) { return time.Parse(time.RFC3339Nano, value) }
+
+type timeScanner struct{ target *time.Time }
+
+func (s timeScanner) Scan(src any) error {
+	value, ok := src.(string)
+	if !ok {
+		if bytes, byteOK := src.([]byte); byteOK {
+			value = string(bytes)
+		} else {
+			return fmt.Errorf("unsupported time value %T", src)
+		}
+	}
+	parsed, err := parseTime(value)
+	if err == nil {
+		*s.target = parsed
+	}
+	return err
+}
+
+type rowScanner interface{ Scan(dest ...any) error }
+
+func scanUser(row rowScanner, user *User) error {
+	return row.Scan(&user.ID, &user.Role, &user.Name, &user.Email, &user.Status, timeScanner{target: &user.CreatedAt})
+}
+
+func (s *Store) audit(ctx context.Context, actorID *int64, action, entityType string, entityID int64, metadata any) error {
+	encoded, _ := json.Marshal(metadata)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO audit_log(actor_user_id, action, entity_type, entity_id, metadata, created_at) VALUES(?, ?, ?, ?, ?, ?)`,
+		actorID, action, entityType, entityID, string(encoded), formatTime(time.Now().UTC()))
+	return err
+}
+
+func cleanText(value string, max int) string {
+	value = strings.TrimSpace(value)
+	if len([]rune(value)) <= max {
+		return value
+	}
+	return string([]rune(value)[:max])
+}
