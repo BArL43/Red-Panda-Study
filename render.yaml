@@ -3,31 +3,36 @@ services:
     name: red-panda-study-api
     runtime: docker
     region: frankfurt
-    plan: starter
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
     autoDeployTrigger: commit
-    disk:
-      name: red-panda-study-data
-      mountPath: /data
-      sizeGB: 1
+
     envVars:
       - key: APP_ENV
         value: production
+
       - key: DB_PATH
-        value: /data/redpanda.db
+        value: /tmp/redpanda.db
+
       - key: PORT
         value: "8788"
+
       - key: SECURE_COOKIES
         value: "true"
+
       - key: CROSS_SITE_COOKIES
         value: "true"
+
       - key: ADMIN_EMAIL
         sync: false
+
       - key: ADMIN_PASSWORD
         sync: false
+
       - key: PUBLIC_APP_URL
         value: https://red-panda-study.smart-ray-0878.chatgpt.site
+
       - key: ALLOWED_ORIGINS
         value: https://red-panda-study.smart-ray-0878.chatgpt.site
