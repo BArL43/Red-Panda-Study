@@ -52,6 +52,7 @@ export function HeroCompass() {
 
   return (
     <div
+      id="compass-demo"
       className="compass-shell"
       ref={cardRef}
       onPointerMove={handlePointer}

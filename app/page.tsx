@@ -1,14 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Reveal } from "@/components/Reveal";
 import { HeroCompass } from "@/components/HeroCompass";
 import { CompassFlow } from "@/components/CompassFlow";
+import { universitySummaries } from "@/lib/university-summaries";
 
-const universities = [
-  { name: "Tsinghua University", city: "Пекин", tag: "Инженерия · AI", mark: "TH" },
-  { name: "Fudan University", city: "Шанхай", tag: "Бизнес · Экономика", mark: "FU" },
-  { name: "The University of Hong Kong", city: "Гонконг", tag: "Исследования · Право", mark: "HK" },
-  { name: "HKUST", city: "Гонконг", tag: "Tech · Entrepreneurship", mark: "ST" },
-];
+const universities = universitySummaries.slice(0, 4).map((university) => ({
+  name: university.nameRu,
+  city: university.city,
+  tag: university.directions.slice(0, 2).join(" · "),
+  mark: university.code.slice(0, 2),
+}));
 
 const steps = [
   ["01", "Разбираемся в целях", "Оцениваем профиль, бюджет, язык и карьерные планы — без шаблонных советов."],
@@ -47,8 +49,28 @@ export default function Home() {
             <span><i>✓</i><b>Проверено экспертом</b><small>двойной контроль</small></span>
           </div>
         </div>
-        <div className="hero-visual">
-          <HeroCompass />
+        <div className="hero-visual bamboo-hero-visual">
+          <Image
+            src="/hero-production.png"
+            alt="Красная панда Лин с картой маршрута в университеты Азии"
+            fill
+            priority
+            unoptimized
+            sizes="(max-width: 1040px) 100vw, 48vw"
+          />
+          <span className="hero-field-note">Проводник по поступлению · Лин</span>
+          <div className="hero-route-ticket">
+            <span>RPS / ROUTE 01</span>
+            <strong>Москва → Азия</strong>
+            <small>Китай · Гонконг · набор 2027</small>
+          </div>
+          <div className="hero-compass-ticket">
+            <span>Compass preview</span>
+            <div><b>68%</b><small>ambitious</small></div>
+            <div><b>82%</b><small>target</small></div>
+            <div><b>94%</b><small>safe</small></div>
+            <Link href="/consultation" aria-label="Начать диагностику Compass">↗</Link>
+          </div>
         </div>
         <span className="hero-scroll-cue">Прокрутите, чтобы увидеть маршрут <i /></span>
       </section>
@@ -60,6 +82,22 @@ export default function Home() {
           <span>Экспертный shortlist</span><i />
           <span>Сильная заявка</span><i />
           <span>Контроль до зачисления</span>
+        </div>
+      </section>
+
+      <section className="home-compass-section" id="compass">
+        <div className="section-shell home-compass-heading">
+          <div>
+            <span className="eyebrow">Red Panda Compass</span>
+            <h2>Сначала видите варианты. Потом принимаете решение.</h2>
+          </div>
+          <div>
+            <p>Compass собирает первую карту поступления: три уровня риска, бюджет, требования и точки усиления профиля.</p>
+            <Link href="/consultation">Построить мою карту <span>→</span></Link>
+          </div>
+        </div>
+        <div className="section-shell home-compass-stage">
+          <HeroCompass />
         </div>
       </section>
 
@@ -143,7 +181,7 @@ export default function Home() {
         <Reveal className="section-heading split-heading">
           <div>
             <span className="eyebrow">Ориентиры для старта</span>
-            <h2>Университеты, с которых часто начинается shortlist</h2>
+            <h2>40 университетов — и не один готовый ответ</h2>
           </div>
           <Link className="text-link" href="/universities">Весь каталог <span>→</span></Link>
         </Reveal>
@@ -161,7 +199,7 @@ export default function Home() {
           ))}
         </div>
         <p className="data-note">
-          Подбор не ограничен этим списком: финальные требования и сроки всегда проверяем под конкретный набор.
+          В открытом каталоге видны все вузы. 157 программ, требования и персональные комментарии открываются в кабинете с куратором.
         </p>
       </section>
 

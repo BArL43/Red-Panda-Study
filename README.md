@@ -1,4 +1,33 @@
-# vinext-starter
+# Red Panda Study
+
+## Структура проекта
+
+- frontend находится в корне репозитория;
+- Go API находится в `backend/`;
+- общий Blueprint для Render находится в `render.yaml`;
+- SQLite хранится на постоянном диске backend-сервиса.
+
+## Red Panda Compass
+
+The student dashboard includes a rules-first admissions strategy tool. Its
+curated catalog and deterministic checks always produce a 3–7 program
+shortlist, budget and language checks, missing items, scenarios, and a parent
+report. When `VIBE_API_KEY` is configured on the frontend service, the
+server-side Worker enriches that fixed shortlist through the synchronous
+VibeMarketolog Agent API text endpoint.
+
+Copy `.env.example` to `.env.local` only for local development. Keep
+`VIBE_API_KEY` server-side and never prefix it with `NEXT_PUBLIC_`.
+`VIBE_MODEL` defaults to `gpt-5.6-sol`. The rules engine remains available if
+the external AI service is unavailable or its response fails validation.
+
+## Render
+
+See `RENDER_DEPLOY.md`. Do not commit real secrets or a populated SQLite file.
+
+Program costs and deadline windows are planning references. The UI links to
+official admissions pages and requires expert verification before a final
+strategy is approved.
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and

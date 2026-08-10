@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, session, SessionUser } from "./api";
 
 type Invitation = {
   role: "student" | "mentor";
@@ -18,6 +18,7 @@ export function InviteAccept() {
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -28,17 +29,48 @@ export function InviteAccept() {
 
   const visibleError = !token ? "В ссылке нет токена приглашения" : error;
 
+  const destinationFor = (user: SessionUser) => `/${user.role}`;
+
+  const verifySession = async (expectedRole: Invitation["role"]) => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const current = await session();
+      if (current) {
+        if (current.role !== expectedRole) {
+          throw new Error(`В браузере уже открыт кабинет с ролью «${current.role}». Выйдите из него и повторите активацию.`);
+        }
+        return current;
+      }
+      if (attempt < 2) {
+        await new Promise((resolve) => window.setTimeout(resolve, 350));
+      }
+    }
+    return null;
+  };
+
   const accept = async () => {
+    if (!invitation || busy) return;
     setBusy(true);
     setError("");
+    setStatus("Создаём аккаунт и защищённую сессию…");
     try {
-      const result = await api<{ redirect: string }>(`/invitations/${encodeURIComponent(token)}/accept`, {
+      await api<{ redirect: string }>(`/invitations/${encodeURIComponent(token)}/accept`, {
         method: "POST",
-        body: "{}",
       });
-      window.location.assign(result.redirect);
+      setStatus("Проверяем доступ к кабинету…");
+      const current = await verifySession(invitation.role);
+      if (!current) {
+        throw new Error("Аккаунт создан, но браузер не сохранил вход. Разрешите cookies для сайта и нажмите кнопку ещё раз.");
+      }
+      setStatus("Готово. Открываем кабинет…");
+      window.location.replace(destinationFor(current));
     } catch (acceptError) {
-      setError(acceptError instanceof Error ? acceptError.message : "Не удалось принять приглашение");
+      const current = await verifySession(invitation.role).catch(() => null);
+      if (current) {
+        window.location.replace(destinationFor(current));
+        return;
+      }
+      setStatus("");
+      setError(acceptError instanceof Error ? acceptError.message : "Не удалось активировать аккаунт");
       setBusy(false);
     }
   };
@@ -54,7 +86,19 @@ export function InviteAccept() {
             <h1>{invitation.name},<br />ваш кабинет готов.</h1>
             <p>Роль: <strong>{invitation.role === "student" ? "ученик" : "наставник"}</strong>. После активации ссылка погаснет, а вход сохранится на этом устройстве.</p>
             <div className="invite-meta"><span>{invitation.email}</span><span>до {new Date(invitation.expires_at).toLocaleDateString("ru-RU")}</span></div>
-            <button className="portal-button primary wide" type="button" onClick={accept} disabled={busy}>{busy ? "Создаём кабинет…" : "Активировать доступ"} <span>→</span></button>
+            <div className="invite-activation" aria-live="polite">
+              {error && (
+                <div className="invite-activation-error" role="alert">
+                  <strong>Не удалось активировать аккаунт</strong>
+                  <span>{error}</span>
+                </div>
+              )}
+              {status && <p className="invite-activation-status"><i />{status}</p>}
+              <button className="portal-button primary wide" type="button" onClick={accept} disabled={busy}>
+                {busy ? "Активируем…" : error ? "Попробовать снова" : "Активировать аккаунт"} <span>→</span>
+              </button>
+              <small>Не закрывайте страницу до перехода в личный кабинет.</small>
+            </div>
           </>
         ) : visibleError ? (
           <>

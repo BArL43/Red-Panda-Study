@@ -69,11 +69,15 @@ func (s *Store) InvitationByToken(ctx context.Context, raw string) (Invitation, 
 	return item, nil
 }
 
-func (s *Store) AcceptInvitation(ctx context.Context, raw string) (User, error) {
+func (s *Store) AcceptInvitation(ctx context.Context, raw string, sessionTTL time.Duration) (User, string, error) {
 	now := time.Now().UTC()
+	sessionRaw, err := randomToken(32)
+	if err != nil {
+		return User{}, "", err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return User{}, err
+		return User{}, "", err
 	}
 	defer tx.Rollback()
 
@@ -84,16 +88,16 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string) (User, error) 
 		FROM invitations WHERE token_hash = ?`, tokenHash(raw)).
 		Scan(&invitation.ID, &invitation.Role, &invitation.Name, &invitation.Email, timeScanner{target: &invitation.ExpiresAt}, &used, timeScanner{target: &invitation.CreatedAt})
 	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, ErrNotFound
+		return User{}, "", ErrNotFound
 	}
 	if err != nil {
-		return User{}, err
+		return User{}, "", err
 	}
 	if used.Valid {
-		return User{}, ErrInviteUsed
+		return User{}, "", ErrInviteUsed
 	}
 	if now.After(invitation.ExpiresAt) {
-		return User{}, ErrInviteExpired
+		return User{}, "", ErrInviteExpired
 	}
 
 	var existing User
@@ -102,24 +106,29 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string) (User, error) 
 		invitation.Email).Scan(&existing.ID, &existing.Role, &existing.Name, &existing.Email, &existing.Status, timeScanner{target: &existing.CreatedAt})
 	if err == nil {
 		if existing.Role != invitation.Role || existing.Status != "active" {
-			return User{}, ErrConflict
+			return User{}, "", ErrConflict
 		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET used_at = ? WHERE id = ? AND used_at IS NULL`, formatTime(now), invitation.ID)
 		if err != nil {
-			return User{}, err
+			return User{}, "", err
 		}
 		affected, _ := result.RowsAffected()
 		if affected != 1 {
-			return User{}, ErrInviteUsed
+			return User{}, "", ErrInviteUsed
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO sessions(token_hash, user_id, expires_at, created_at) VALUES(?, ?, ?, ?)`,
+			tokenHash(sessionRaw), existing.ID, formatTime(now.Add(sessionTTL)), formatTime(now)); err != nil {
+			return User{}, "", err
 		}
 		if err := tx.Commit(); err != nil {
-			return User{}, err
+			return User{}, "", err
 		}
 		_ = s.audit(ctx, &existing.ID, "invitation.reaccepted", "invitation", invitation.ID, map[string]any{"role": invitation.Role})
-		return existing, nil
+		return existing, sessionRaw, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return User{}, err
+		return User{}, "", err
 	}
 
 	result, err := tx.ExecContext(ctx, `
@@ -127,44 +136,49 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string) (User, error) 
 		VALUES(?, ?, ?, 'active', ?)`,
 		invitation.Role, invitation.Name, invitation.Email, formatTime(now))
 	if err != nil {
-		return User{}, err
+		return User{}, "", err
 	}
 	userID, _ := result.LastInsertId()
 
 	if invitation.Role == "student" {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO student_profiles(user_id) VALUES(?)`, userID); err != nil {
-			return User{}, err
+			return User{}, "", err
 		}
 		result, err := tx.ExecContext(ctx, `
 			INSERT INTO conversations(kind, user_id, subject, display_name, created_at, updated_at)
 			VALUES('student', ?, 'Сопровождение поступления', ?, ?, ?)`,
 			userID, invitation.Name, formatTime(now), formatTime(now))
 		if err != nil {
-			return User{}, err
+			return User{}, "", err
 		}
 		conversationID, _ := result.LastInsertId()
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO messages(conversation_id, sender_type, sender_name, body, created_at)
 			VALUES(?, 'system', 'Red Panda Study', ?, ?)`,
 			conversationID, "Добро пожаловать! Здесь команда и наставник будут вести всю коммуникацию по вашему поступлению.", formatTime(now)); err != nil {
-			return User{}, err
+			return User{}, "", err
 		}
 	}
 
 	result, err = tx.ExecContext(ctx, `UPDATE invitations SET used_at = ? WHERE id = ? AND used_at IS NULL`, formatTime(now), invitation.ID)
 	if err != nil {
-		return User{}, err
+		return User{}, "", err
 	}
 	affected, _ := result.RowsAffected()
 	if affected != 1 {
-		return User{}, ErrInviteUsed
+		return User{}, "", ErrInviteUsed
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO sessions(token_hash, user_id, expires_at, created_at) VALUES(?, ?, ?, ?)`,
+		tokenHash(sessionRaw), userID, formatTime(now.Add(sessionTTL)), formatTime(now)); err != nil {
+		return User{}, "", err
 	}
 	if err := tx.Commit(); err != nil {
-		return User{}, err
+		return User{}, "", err
 	}
 	user := User{ID: userID, Role: invitation.Role, Name: invitation.Name, Email: invitation.Email, Status: "active", CreatedAt: now}
 	_ = s.audit(ctx, &userID, "invitation.accepted", "invitation", invitation.ID, map[string]any{"role": invitation.Role})
-	return user, nil
+	return user, sessionRaw, nil
 }
 
 func (s *Store) ListInvitations(ctx context.Context, publicBaseURL string) ([]Invitation, error) {

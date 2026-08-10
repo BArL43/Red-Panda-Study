@@ -1,38 +1,51 @@
 services:
   - type: web
+    name: red-panda-study-web
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: GO_API_HOSTPORT
+        fromService:
+          type: web
+          name: red-panda-study-api
+          property: hostport
+      - key: VIBE_API_KEY
+        sync: false
+      - key: VIBE_MODEL
+        value: gpt-5.6-sol
+
+  - type: web
     name: red-panda-study-api
     runtime: docker
     region: frankfurt
-    plan: free
+    plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
     autoDeployTrigger: commit
-
+    disk:
+      name: red-panda-study-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
-
       - key: DB_PATH
-        value: /tmp/redpanda.db
-
-      - key: PORT
-        value: "8788"
-
-      - key: SECURE_COOKIES
-        value: "true"
-
-      - key: CROSS_SITE_COOKIES
-        value: "true"
-
+        value: /data/redpanda.db
       - key: ADMIN_EMAIL
         sync: false
-
       - key: ADMIN_PASSWORD
         sync: false
-
       - key: PUBLIC_APP_URL
-        value: https://red-panda-study.smart-ray-0878.chatgpt.site
-
+        value: https://red-panda-study-web.onrender.com
       - key: ALLOWED_ORIGINS
-        value: https://red-panda-study.smart-ray-0878.chatgpt.site
+        value: https://red-panda-study-web.onrender.com
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: CROSS_SITE_COOKIES
+        value: "false"

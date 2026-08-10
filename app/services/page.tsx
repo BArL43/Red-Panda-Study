@@ -20,8 +20,6 @@ const packages = [
   {
     code: "00 · COMPASS",
     title: "Compass Snapshot",
-    price: "0 ₽",
-    oldPrice: null,
     note: "первая карта · 5 минут",
     text: "Мгновенная стартовая точка: три сценария, ориентир по бюджету и список данных, которые стоит усилить.",
     includes: ["AI-анализ анкеты", "Ambitious / Target / Safe", "Предварительный бюджет", "Ключевые дедлайны", "Сценарий следующего шага"],
@@ -30,8 +28,6 @@ const packages = [
   {
     code: "01 · STRATEGY",
     title: "Panda Strategy",
-    price: "24 900 ₽",
-    oldPrice: "34 900 ₽",
     note: "разовый проект · 7–10 дней",
     text: "Для самостоятельного абитуриента, которому нужны объективная оценка и проверенный рабочий маршрут.",
     includes: ["90-минутная диагностика", "Shortlist до 10 программ", "Матрица Ambitious / Target / Safe", "Календарь и бюджет", "Экспертный отчёт и итоговый созвон"],
@@ -40,8 +36,6 @@ const packages = [
   {
     code: "02 · CHINA",
     title: "China Degree",
-    price: "99 900 ₽",
-    oldPrice: "129 900 ₽",
     note: "до получения решений",
     text: "Полное поступление на бакалавриат или магистратуру в Китае с личным куратором и контролем каждой подачи.",
     includes: ["Всё из Panda Strategy", "До 5 заявок", "CV, эссе и рекомендации", "Двойная pre-submit проверка", "Контроль статусов и офферов", "Подготовка к следующему этапу"],
@@ -51,8 +45,6 @@ const packages = [
   {
     code: "03 · HONG KONG",
     title: "Hong Kong Select",
-    price: "149 900 ₽",
-    oldPrice: "189 900 ₽",
     note: "до получения решений",
     text: "Усиленный портфель для конкурентных англоязычных программ Гонконга, включая интервью и работу с академической историей.",
     includes: ["До 5 заявок", "Стратегия позиционирования", "CV, эссе и рекомендации", "Интервью-подготовка", "Двойная проверка подач", "Сравнение условий офферов"],
@@ -127,9 +119,9 @@ export default function ServicesPage() {
           <div className="section-heading split-heading">
             <div>
               <span className="eyebrow eyebrow-light">Форматы работы</span>
-              <h2>Понятный объём. Прозрачный ориентир по цене.</h2>
+              <h2>Понятный объём. Формат под вашу задачу.</h2>
             </div>
-            <p>Цены примерные и зависят от числа программ, сроков, языка документов и сложности профиля. Точный расчёт фиксируем до начала работы.</p>
+            <p>Состав и стоимость сопровождения зависят от числа программ, сроков, языка документов и сложности профиля. Подберём формат после короткой диагностики.</p>
           </div>
           <div className="package-grid">
             {packages.map((item) => (
@@ -137,13 +129,13 @@ export default function ServicesPage() {
                 <span>{item.code}</span>
                 {item.featured && <div className="featured-label">Основной формат</div>}
                 <h3>{item.title}</h3>
-                <div className="package-price">{item.price}{item.oldPrice && <del>{item.oldPrice}</del>}</div>
+                <Link className="package-price-request" href="/consultation">Запросить стоимость <span>↗</span></Link>
                 <small>{item.note}</small>
                 <p>{item.text}</p>
                 <ul>{item.includes.map((point) => <li key={point}>{point}</li>)}</ul>
                 <div className="package-footer">
                   <span>{item.meta}</span>
-                  <Link href="/consultation">Обсудить →</Link>
+                  <Link href="/consultation">Обсудить формат →</Link>
                 </div>
               </article>
             ))}

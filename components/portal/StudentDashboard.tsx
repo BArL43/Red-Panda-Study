@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, formatDate } from "./api";
 import { ConversationPanel } from "./ConversationPanel";
 import { LoadingPortal, PortalError, PortalShell } from "./PortalShell";
+import { StudentCompass } from "./StudentCompass";
+import { StudentUniversityLibrary } from "./StudentUniversityLibrary";
 import { usePortalAuth } from "./usePortalAuth";
 
 type Task = { id: number; title: string; description: string; status: string; due_at?: string };
@@ -19,7 +21,7 @@ export function StudentDashboard() {
   const { user, checking } = usePortalAuth("student");
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"route" | "tasks" | "chat">("route");
+  const [tab, setTab] = useState<"route" | "universities" | "compass" | "tasks" | "chat">("route");
 
   const load = useCallback(async () => {
     setError("");
@@ -53,7 +55,18 @@ export function StudentDashboard() {
   const done = data.tasks.filter((task) => task.status === "done").length;
 
   return (
-    <PortalShell user={user} eyebrow="Личная траектория" title={`Привет, ${user.name.split(" ")[0]}!`}>
+    <PortalShell
+      user={user}
+      eyebrow="Личная траектория"
+      title={`Привет, ${user.name.split(" ")[0]}!`}
+      navigation={[
+        { key: "route", label: "Маршрут", icon: "⌁", active: tab === "route", onClick: () => setTab("route") },
+        { key: "universities", label: "Вузы и требования", icon: "学", active: tab === "universities", onClick: () => setTab("universities") },
+        { key: "compass", label: "Compass AI", icon: "✦", active: tab === "compass", onClick: () => setTab("compass") },
+        { key: "tasks", label: "Этапы и задачи", icon: "✓", active: tab === "tasks", onClick: () => setTab("tasks") },
+        { key: "chat", label: "Сообщения", icon: "◎", active: tab === "chat", onClick: () => setTab("chat") },
+      ]}
+    >
       <div className="student-hero">
         <div>
           <span className="portal-eyebrow light">Ваш маршрут</span>
@@ -65,31 +78,47 @@ export function StudentDashboard() {
       </div>
       <div className="portal-tabs student-tabs">
         <button className={tab === "route" ? "active" : ""} onClick={() => setTab("route")}>Маршрут</button>
+        <button className={tab === "universities" ? "active" : ""} onClick={() => setTab("universities")}>Вузы · 40</button>
+        <button className={tab === "compass" ? "active" : ""} onClick={() => setTab("compass")}>Compass AI</button>
         <button className={tab === "tasks" ? "active" : ""} onClick={() => setTab("tasks")}>Задачи · {data.tasks.length}</button>
         <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>Команда</button>
       </div>
       {error && <p className="portal-banner-error">{error}<button onClick={() => setError("")}>×</button></p>}
 
       {tab === "route" && (
-        <section className="student-route-grid">
-          <div className="portal-card">
-            <div className="portal-card-head"><div><span className="portal-eyebrow">Ближайшие шаги</span><h2>Что сейчас в работе</h2></div><span>{done}/{data.tasks.length} готово</span></div>
-            <div className="route-timeline">
-              {(data.tasks.length ? data.tasks : [
-                { id: -1, title: "Диагностика профиля", description: "Координатор уточнит цели и академический опыт.", status: "in_progress" },
-                { id: -2, title: "Шорт-лист университетов", description: "Соберём сбалансированный список программ.", status: "todo" },
-              ]).slice(0, 4).map((task, index) => (
-                <article className={task.status} key={task.id}><span>{task.status === "done" ? "✓" : index + 1}</span><div><strong>{task.title}</strong><p>{task.description}</p>{task.due_at && <small>до {formatDate(task.due_at)}</small>}</div></article>
-              ))}
+        <>
+          <section className="student-route-grid">
+            <div className="portal-card">
+              <div className="portal-card-head"><div><span className="portal-eyebrow">Ближайшие шаги</span><h2>Что сейчас в работе</h2></div><span>{done}/{data.tasks.length} готово</span></div>
+              <div className="route-timeline">
+                {(data.tasks.length ? data.tasks : [
+                  { id: -1, title: "Диагностика профиля", description: "Координатор уточнит цели и академический опыт.", status: "in_progress" },
+                  { id: -2, title: "Шорт-лист университетов", description: "Соберём сбалансированный список программ.", status: "todo" },
+                ]).slice(0, 4).map((task, index) => (
+                  <article className={task.status} key={task.id}><span>{task.status === "done" ? "✓" : index + 1}</span><div><strong>{task.title}</strong><p>{task.description}</p>{task.due_at && <small>до {formatDate(task.due_at)}</small>}</div></article>
+                ))}
+              </div>
             </div>
-          </div>
-          <aside className="portal-card mentor-card">
-            <span className="mentor-card-orbit">◌</span>
-            <span className="portal-eyebrow">Ваш человек рядом</span>
-            {data.mentor ? <><div className="mentor-avatar">{data.mentor.name.slice(0, 1)}</div><h2>{data.mentor.name}</h2><p>Личный наставник. Поможет разобраться в задачах и подготовиться к каждому этапу.</p><button className="portal-button ghost wide" onClick={() => setTab("chat")}>Написать наставнику →</button></> : <><h2>Наставник подключается</h2><p>Координатор уже подбирает специалиста под ваше направление.</p></>}
-          </aside>
-        </section>
+            <aside className="portal-card mentor-card">
+              <span className="mentor-card-orbit">◌</span>
+              <span className="portal-eyebrow">Ваш человек рядом</span>
+              {data.mentor ? <><div className="mentor-avatar">{data.mentor.name.slice(0, 1)}</div><h2>{data.mentor.name}</h2><p>Личный наставник. Поможет разобраться в задачах и подготовиться к каждому этапу.</p><button className="portal-button ghost wide" onClick={() => setTab("chat")}>Написать наставнику →</button></> : <><h2>Наставник подключается</h2><p>Координатор уже подбирает специалиста под ваше направление.</p></>}
+            </aside>
+          </section>
+          <section className="student-compass-promo">
+            <div>
+              <span className="portal-eyebrow light">Новое · Red Panda Compass</span>
+              <h2>Примерьте поступление до подачи документов</h2>
+              <p>Получите 3–7 программ ambitious / target / safe, проверку бюджета, экзаменов и документов, сценарии улучшения и отчёт для родителей.</p>
+            </div>
+            <button type="button" onClick={() => setTab("compass")}>Открыть Compass AI <span>→</span></button>
+          </section>
+        </>
       )}
+
+      {tab === "universities" && <StudentUniversityLibrary onOpenChat={() => setTab("chat")} />}
+
+      {tab === "compass" && <StudentCompass userId={user.id} />}
 
       {tab === "tasks" && (
         <section className="portal-card">

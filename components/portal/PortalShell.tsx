@@ -6,12 +6,22 @@ import { logout, SessionUser } from "./api";
 
 const roleLabels = { admin: "Администратор", student: "Ученик", mentor: "Наставник" };
 
+export type PortalNavigationItem = {
+  key: string;
+  label: string;
+  icon: string;
+  active?: boolean;
+  href?: string;
+  onClick?: () => void;
+};
+
 export function PortalShell({
   user,
   title,
   eyebrow,
   children,
   actions,
+  navigation = [],
   demo = false,
 }: {
   user: SessionUser;
@@ -19,6 +29,7 @@ export function PortalShell({
   eyebrow: string;
   children: ReactNode;
   actions?: ReactNode;
+  navigation?: PortalNavigationItem[];
   demo?: boolean;
 }) {
   return (
@@ -29,14 +40,20 @@ export function PortalShell({
           <span>Red Panda<br />Study</span>
         </Link>
         <nav>
-          <span className="active"><i>⌁</i> Рабочий стол</span>
-          <span><i>◎</i> Сообщения</span>
-          <span><i>✓</i> Этапы и задачи</span>
+          {navigation.map((item) => item.href ? (
+            <Link className={item.active ? "active" : ""} href={item.href} key={item.key}>
+              <i>{item.icon}</i><span className="portal-nav-label">{item.label}</span>
+            </Link>
+          ) : (
+            <button className={item.active ? "active" : ""} type="button" onClick={item.onClick} key={item.key}>
+              <i>{item.icon}</i><span className="portal-nav-label">{item.label}</span>
+            </button>
+          ))}
         </nav>
         <div className="portal-sidebar-note">
-          <span className="portal-note-paw">●</span>
-          <strong>Всё под контролем</strong>
-          <p>История действий и прогресс сохраняются автоматически.</p>
+          <span className="portal-note-paw">✦</span>
+          <strong>Лин держит маршрут</strong>
+          <p>Дедлайны, решения и проверки собраны в одной понятной траектории.</p>
         </div>
         {demo ? (
           <Link className="portal-logout" href="/">Вернуться на сайт ↗</Link>

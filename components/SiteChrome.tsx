@@ -320,6 +320,14 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       </header>}
       {!portal && <div className="scroll-progress" aria-hidden="true"><i style={{ width: `${scrollProgress}%` }} /></div>}
       <main key={pathname} className={`page-enter ${portal ? "portal-main" : ""}`}>{children}</main>
+      {!portal && (
+        <nav className="mobile-route-dock" aria-label="Быстрая навигация">
+          <Link className={pathname === "/" ? "active" : ""} href="/"><i>⌂</i><span>Главная</span></Link>
+          <Link className={pathname.startsWith("/countries") ? "active" : ""} href="/countries"><i>地</i><span>Страны</span></Link>
+          <Link className={pathname.startsWith("/universities") ? "active" : ""} href="/universities"><i>学</i><span>Вузы</span></Link>
+          <Link className="dock-accent" href="/consultation"><i>✦</i><span>Старт</span></Link>
+        </nav>
+      )}
       {!portal && <Footer />}
       {!portal && <SupportChat />}
       <div className={`paw-transition ${transitioning ? "is-active" : ""}`} aria-hidden="true">

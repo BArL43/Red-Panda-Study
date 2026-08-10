@@ -77,6 +77,10 @@ export function MentorDashboard() {
       user={user}
       eyebrow="Наставнический контур"
       title="Мои ученики"
+      navigation={[
+        { key: "students", label: "Ученики", icon: "人", active: tab === "students", onClick: () => setTab("students") },
+        { key: "chat", label: "Сообщения", icon: "◎", active: tab === "chat", onClick: () => setTab("chat") },
+      ]}
       actions={<button className="portal-button primary compact" disabled={!selected} onClick={() => setTaskOpen(true)}>+ Новая задача</button>}
     >
       <div className="portal-tabs">

@@ -108,12 +108,7 @@ func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) 
 	if !s.allowPublic(w, r) {
 		return
 	}
-	user, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"))
-	if err != nil {
-		writeStoreError(w, err)
-		return
-	}
-	session, err := s.store.CreateSession(r.Context(), user.ID, s.cfg.SessionTTL)
+	user, session, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"), s.cfg.SessionTTL)
 	if err != nil {
 		writeStoreError(w, err)
 		return
