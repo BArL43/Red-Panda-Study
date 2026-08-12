@@ -49,9 +49,18 @@ function json(value: unknown, status = 200) {
   });
 }
 
-function apiOrigin(env: Env) {
-  const privateHost = env.GO_API_HOSTPORT?.trim();
-  const configured = privateHost ? `http://${privateHost}` : env.GO_API_URL?.trim();
+function apiOrigin(env?: Env) {
+  // Cloudflare supplies bindings as `env`; the Node/Vinext server on Render
+  // exposes the same values through process.env and may omit the binding object.
+  const runtimeEnv =
+    env ??
+    (typeof process !== "undefined"
+      ? (process.env as unknown as Env)
+      : undefined);
+  const privateHost = runtimeEnv?.GO_API_HOSTPORT?.trim();
+  const configured = privateHost
+    ? `http://${privateHost}`
+    : runtimeEnv?.GO_API_URL?.trim();
   return (configured || DEFAULT_API_ORIGIN).replace(/\/$/, "");
 }
 
