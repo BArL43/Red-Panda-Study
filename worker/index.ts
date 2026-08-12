@@ -8,7 +8,7 @@ import {
 } from "../lib/compass";
 import { universityPrograms } from "../lib/university-programs";
 
-const DEFAULT_API_ORIGIN = "http://127.0.0.1:8788";
+const DEFAULT_API_ORIGIN = "https://red-panda-study-api.onrender.com";
 const COMPASS_DAILY_LIMIT = 5;
 const COMPASS_COOLDOWN_MS = 60_000;
 const COMPASS_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
