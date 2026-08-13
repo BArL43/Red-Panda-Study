@@ -16,7 +16,10 @@ export type UniversitySummary = {
   programCount: number;
   tuitionFromRub: number;
   officialWebsite: string;
-  logoUrl: s[
+  logoUrl: string;
+};
+
+export const universitySummaries = [
   {
     "nameRu": "Пекинский университет",
     "nameEn": "Peking University",
@@ -948,8 +951,5 @@ export type UniversitySummary = {
     "tuitionFromRub": 1500000,
     "officialWebsite": "https://hkbu.edu.hk",
     "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhkbu.edu.hk&sz=128"
-  }
-]Count": 5,
-    "tuitionFromRub": 1500000
   }
 ] as const satisfies readonly UniversitySummary[];
