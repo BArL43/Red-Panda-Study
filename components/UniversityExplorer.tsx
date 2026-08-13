@@ -125,7 +125,24 @@ export function UniversityExplorer() {
         {visible.map((university, index) => (
           <article className="catalog-card public-university-card" key={university.nameRu}>
             <div className="catalog-card-top">
-              <span className="catalog-code">{university.code.slice(0, 8)}</span>
+              <a
+                className="university-logo"
+                href={university.officialWebsite}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Официальный сайт: ${university.nameRu}`}
+                title="Официальный сайт университета"
+              >
+                <span aria-hidden="true">{university.code.slice(0, 8)}</span>
+                <img
+                  src={university.logoUrl}
+                  alt={`Логотип: ${university.nameRu}`}
+                  width="64"
+                  height="64"
+                  loading="lazy"
+                  onError={(event) => event.currentTarget.remove()}
+                />
+              </a>
               <span className="catalog-index">{String(index + 1).padStart(2, "0")}</span>
             </div>
             <span className="catalog-country">{university.country} · {university.city}</span>
