@@ -1,5 +1,8 @@
 // Generated from RPS_Universities_By_Program (1).xlsx on 2026-08-10.
 // Safe for the public catalog: no program-level requirements are included here.
+// Tuition is a rounded planning estimate in RUB, calculated 2026-08-13 from
+// the lowest tuition in the RPS dataset. The exact amount depends on programme
+// and the exchange rate at payment.
 
 export type UniversitySummary = {
   nameRu: string;
@@ -11,6 +14,7 @@ export type UniversitySummary = {
   languages: readonly string[];
   degrees: readonly string[];
   programCount: number;
+  tuitionFromRub: number;
 };
 
 export const universitySummaries = [
@@ -33,7 +37,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 290000
   },
   {
     "nameRu": "Университет Цинхуа",
@@ -53,7 +58,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 310000
   },
   {
     "nameRu": "Университет Фудань",
@@ -75,7 +81,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 260000
   },
   {
     "nameRu": "Шанхайский университет транспорта",
@@ -96,7 +103,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 310000
   },
   {
     "nameRu": "Чжэцзянский университет",
@@ -116,7 +124,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Научно-технический университет Китая",
@@ -136,7 +145,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Нанкинский университет",
@@ -157,7 +167,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Уханьский университет",
@@ -178,7 +189,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Университет Тунцзи",
@@ -198,7 +210,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 290000
   },
   {
     "nameRu": "Хуачжунский университет науки и технологий",
@@ -218,7 +231,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Харбинский политехнический университет",
@@ -238,7 +252,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Университет Сунь Ятсена",
@@ -259,7 +274,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 240000
   },
   {
     "nameRu": "Пекинский педагогический университет",
@@ -280,7 +296,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Южный университет науки и технологий",
@@ -300,7 +317,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 310000
   },
   {
     "nameRu": "Сианьский университет транспорта",
@@ -321,7 +339,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Сычуаньский университет",
@@ -342,7 +361,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Университет Бэйхан",
@@ -362,7 +382,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 260000
   },
   {
     "nameRu": "Университет Сямэнь",
@@ -384,7 +405,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Университет электронной науки и технологий Китая",
@@ -404,7 +426,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 200000
   },
   {
     "nameRu": "Народный университет Китая",
@@ -425,7 +448,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 260000
   },
   {
     "nameRu": "Университет международного бизнеса и экономики",
@@ -445,7 +469,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 240000
   },
   {
     "nameRu": "Шанхайский университет финансов и экономики",
@@ -465,7 +490,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 260000
   },
   {
     "nameRu": "Восточно-Китайский педагогический университет",
@@ -486,7 +512,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Шэньчжэньский университет",
@@ -506,7 +533,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Восточно-Китайский университет науки и технологии",
@@ -526,7 +554,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Тяньцзиньский университет",
@@ -545,7 +574,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Даляньский технологический университет",
@@ -564,7 +594,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 200000
   },
   {
     "nameRu": "Шанхайский университет",
@@ -584,7 +615,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Юго-Восточный университет",
@@ -603,7 +635,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 260000
   },
   {
     "nameRu": "Пекинский химико-технологический университет",
@@ -621,7 +654,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 2
+    "programCount": 2,
+    "tuitionFromRub": 200000
   },
   {
     "nameRu": "Южно-Китайский технологический университет",
@@ -640,7 +674,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Центрально-Южный университет",
@@ -660,7 +695,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 200000
   },
   {
     "nameRu": "Хунаньский университет",
@@ -679,7 +715,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 220000
   },
   {
     "nameRu": "Шанхайский технологический университет",
@@ -698,7 +735,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 3
+    "programCount": 3,
+    "tuitionFromRub": 310000
   },
   {
     "nameRu": "Гонконгский университет",
@@ -719,7 +757,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 1710000
   },
   {
     "nameRu": "Китайский университет Гонконга",
@@ -740,7 +779,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 1650000
   },
   {
     "nameRu": "Гонконгский университет науки и технологий",
@@ -760,7 +800,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 4
+    "programCount": 4,
+    "tuitionFromRub": 1700000
   },
   {
     "nameRu": "Городской университет Гонконга",
@@ -781,7 +822,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 1600000
   },
   {
     "nameRu": "Гонконгский политехнический университет",
@@ -802,7 +844,8 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 1600000
   },
   {
     "nameRu": "Гонконгский баптистский университет",
@@ -824,6 +867,7 @@ export const universitySummaries = [
     "degrees": [
       "Bachelor"
     ],
-    "programCount": 5
+    "programCount": 5,
+    "tuitionFromRub": 1500000
   }
 ] as const satisfies readonly UniversitySummary[];
