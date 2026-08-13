@@ -28,6 +28,15 @@ function languageLabel(languages: readonly string[]) {
   return "китайский";
 }
 
+function plural(value: number, forms: [string, string, string]) {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return forms[2];
+  if (mod10 === 1) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4) return forms[1];
+  return forms[2];
+}
+
 export function UniversityExplorer() {
   const [country, setCountry] = useState("Все");
   const [direction, setDirection] = useState("Все направления");
@@ -108,7 +117,7 @@ export function UniversityExplorer() {
       </div>
 
       <div className="explorer-meta">
-        <span>{filtered.length} вузов найдено</span>
+        <span>{filtered.length} {plural(filtered.length, ["вуз", "вуза", "вузов"])} найдено</span>
         <span>Цены — ориентир «от», зависят от программы и курса валют</span>
       </div>
 
@@ -134,7 +143,7 @@ export function UniversityExplorer() {
               </div>
               <div>
                 <span>В базе RPS</span>
-                <strong>{university.programCount} программ</strong>
+                <strong>{university.programCount} {plural(university.programCount, ["программа", "программы", "программ"])}</strong>
               </div>
             </div>
 
