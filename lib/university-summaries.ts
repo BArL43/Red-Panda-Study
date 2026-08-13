@@ -15,9 +15,8 @@ export type UniversitySummary = {
   degrees: readonly string[];
   programCount: number;
   tuitionFromRub: number;
-};
-
-export const universitySummaries = [
+  officialWebsite: string;
+  logoUrl: s[
   {
     "nameRu": "Пекинский университет",
     "nameEn": "Peking University",
@@ -38,7 +37,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 290000
+    "tuitionFromRub": 290000,
+    "officialWebsite": "https://pku.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fpku.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Цинхуа",
@@ -59,7 +60,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 310000
+    "tuitionFromRub": 310000,
+    "officialWebsite": "https://tsinghua.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Ftsinghua.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Фудань",
@@ -82,7 +85,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 260000
+    "tuitionFromRub": 260000,
+    "officialWebsite": "https://fudan.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Ffudan.edu.cn&sz=128"
   },
   {
     "nameRu": "Шанхайский университет транспорта",
@@ -104,7 +109,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 310000
+    "tuitionFromRub": 310000,
+    "officialWebsite": "https://sjtu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fsjtu.edu.cn&sz=128"
   },
   {
     "nameRu": "Чжэцзянский университет",
@@ -125,7 +132,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://zju.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fzju.edu.cn&sz=128"
   },
   {
     "nameRu": "Научно-технический университет Китая",
@@ -146,7 +155,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://ustc.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fustc.edu.cn&sz=128"
   },
   {
     "nameRu": "Нанкинский университет",
@@ -168,7 +179,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://nju.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fnju.edu.cn&sz=128"
   },
   {
     "nameRu": "Уханьский университет",
@@ -190,7 +203,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://whu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fwhu.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Тунцзи",
@@ -211,7 +226,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 290000
+    "tuitionFromRub": 290000,
+    "officialWebsite": "https://tongji.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Ftongji.edu.cn&sz=128"
   },
   {
     "nameRu": "Хуачжунский университет науки и технологий",
@@ -232,7 +249,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://hust.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhust.edu.cn&sz=128"
   },
   {
     "nameRu": "Харбинский политехнический университет",
@@ -253,7 +272,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://hit.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhit.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Сунь Ятсена",
@@ -275,7 +296,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 240000
+    "tuitionFromRub": 240000,
+    "officialWebsite": "https://sysu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fsysu.edu.cn&sz=128"
   },
   {
     "nameRu": "Пекинский педагогический университет",
@@ -297,7 +320,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://bnu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fbnu.edu.cn&sz=128"
   },
   {
     "nameRu": "Южный университет науки и технологий",
@@ -318,7 +343,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 310000
+    "tuitionFromRub": 310000,
+    "officialWebsite": "https://sustech.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fsustech.edu.cn&sz=128"
   },
   {
     "nameRu": "Сианьский университет транспорта",
@@ -340,7 +367,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://xjtu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fxjtu.edu.cn&sz=128"
   },
   {
     "nameRu": "Сычуаньский университет",
@@ -362,7 +391,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://scu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fscu.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Бэйхан",
@@ -383,7 +414,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 260000
+    "tuitionFromRub": 260000,
+    "officialWebsite": "https://buaa.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fbuaa.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет Сямэнь",
@@ -406,7 +439,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://xmu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fxmu.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет электронной науки и технологий Китая",
@@ -427,7 +462,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 200000
+    "tuitionFromRub": 200000,
+    "officialWebsite": "https://uestc.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fuestc.edu.cn&sz=128"
   },
   {
     "nameRu": "Народный университет Китая",
@@ -449,7 +486,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 260000
+    "tuitionFromRub": 260000,
+    "officialWebsite": "https://ruc.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fruc.edu.cn&sz=128"
   },
   {
     "nameRu": "Университет международного бизнеса и экономики",
@@ -470,7 +509,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 240000
+    "tuitionFromRub": 240000,
+    "officialWebsite": "https://uibe.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fuibe.edu.cn&sz=128"
   },
   {
     "nameRu": "Шанхайский университет финансов и экономики",
@@ -491,7 +532,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 260000
+    "tuitionFromRub": 260000,
+    "officialWebsite": "https://sufe.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fsufe.edu.cn&sz=128"
   },
   {
     "nameRu": "Восточно-Китайский педагогический университет",
@@ -513,7 +556,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://ecnu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fecnu.edu.cn&sz=128"
   },
   {
     "nameRu": "Шэньчжэньский университет",
@@ -534,7 +579,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://szu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fszu.edu.cn&sz=128"
   },
   {
     "nameRu": "Восточно-Китайский университет науки и технологии",
@@ -555,7 +602,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://ecust.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fecust.edu.cn&sz=128"
   },
   {
     "nameRu": "Тяньцзиньский университет",
@@ -575,7 +624,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://tju.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Ftju.edu.cn&sz=128"
   },
   {
     "nameRu": "Даляньский технологический университет",
@@ -595,7 +646,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 200000
+    "tuitionFromRub": 200000,
+    "officialWebsite": "https://dlut.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fdlut.edu.cn&sz=128"
   },
   {
     "nameRu": "Шанхайский университет",
@@ -616,7 +669,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://shu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fshu.edu.cn&sz=128"
   },
   {
     "nameRu": "Юго-Восточный университет",
@@ -636,7 +691,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 260000
+    "tuitionFromRub": 260000,
+    "officialWebsite": "https://seu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fseu.edu.cn&sz=128"
   },
   {
     "nameRu": "Пекинский химико-технологический университет",
@@ -655,7 +712,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 2,
-    "tuitionFromRub": 200000
+    "tuitionFromRub": 200000,
+    "officialWebsite": "https://buct.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fbuct.edu.cn&sz=128"
   },
   {
     "nameRu": "Южно-Китайский технологический университет",
@@ -675,7 +734,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://scut.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fscut.edu.cn&sz=128"
   },
   {
     "nameRu": "Центрально-Южный университет",
@@ -696,7 +757,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 200000
+    "tuitionFromRub": 200000,
+    "officialWebsite": "https://csu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fcsu.edu.cn&sz=128"
   },
   {
     "nameRu": "Хунаньский университет",
@@ -716,7 +779,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 220000
+    "tuitionFromRub": 220000,
+    "officialWebsite": "https://hnu.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhnu.edu.cn&sz=128"
   },
   {
     "nameRu": "Шанхайский технологический университет",
@@ -736,7 +801,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 3,
-    "tuitionFromRub": 310000
+    "tuitionFromRub": 310000,
+    "officialWebsite": "https://shanghaitech.edu.cn",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fshanghaitech.edu.cn&sz=128"
   },
   {
     "nameRu": "Гонконгский университет",
@@ -758,7 +825,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 1710000
+    "tuitionFromRub": 1710000,
+    "officialWebsite": "https://hku.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhku.hk&sz=128"
   },
   {
     "nameRu": "Китайский университет Гонконга",
@@ -780,7 +849,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 1650000
+    "tuitionFromRub": 1650000,
+    "officialWebsite": "https://cuhk.edu.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fcuhk.edu.hk&sz=128"
   },
   {
     "nameRu": "Гонконгский университет науки и технологий",
@@ -801,7 +872,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 4,
-    "tuitionFromRub": 1700000
+    "tuitionFromRub": 1700000,
+    "officialWebsite": "https://hkust.edu.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhkust.edu.hk&sz=128"
   },
   {
     "nameRu": "Городской университет Гонконга",
@@ -823,7 +896,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 1600000
+    "tuitionFromRub": 1600000,
+    "officialWebsite": "https://cityu.edu.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fcityu.edu.hk&sz=128"
   },
   {
     "nameRu": "Гонконгский политехнический университет",
@@ -845,7 +920,9 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
-    "tuitionFromRub": 1600000
+    "tuitionFromRub": 1600000,
+    "officialWebsite": "https://polyu.edu.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fpolyu.edu.hk&sz=128"
   },
   {
     "nameRu": "Гонконгский баптистский университет",
@@ -868,6 +945,11 @@ export const universitySummaries = [
       "Bachelor"
     ],
     "programCount": 5,
+    "tuitionFromRub": 1500000,
+    "officialWebsite": "https://hkbu.edu.hk",
+    "logoUrl": "https://www.google.com/s2/favicons?domain_url=https%3A%2F%2Fhkbu.edu.hk&sz=128"
+  }
+]Count": 5,
     "tuitionFromRub": 1500000
   }
 ] as const satisfies readonly UniversitySummary[];
