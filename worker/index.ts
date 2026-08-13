@@ -190,7 +190,20 @@ const worker = {
     // restrictions while the application and the Go API live on separate hosts.
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       const upstreamURL = new URL(`${url.pathname}${url.search}`, apiOrigin(env));
-      return fetch(new Request(upstreamURL, request));
+      const upstream = await fetch(new Request(upstreamURL, request));
+      const headers = new Headers(upstream.headers);
+      // The response crosses two Render/Cloudflare HTTP stacks. Recalculate
+      // framing headers so the browser never receives a nested or truncated
+      // response, while preserving application headers such as Set-Cookie.
+      headers.delete("content-length");
+      headers.delete("content-encoding");
+      headers.delete("transfer-encoding");
+      headers.delete("connection");
+      return new Response(await upstream.arrayBuffer(), {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers,
+      });
     }
 
     if (url.pathname === "/_vinext/image") {
