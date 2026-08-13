@@ -163,6 +163,22 @@ func (s *Store) SeedAdmin(ctx context.Context, email, password string) (User, er
 	var user User
 	row := s.db.QueryRowContext(ctx, `SELECT id, role, name, email, status, created_at FROM users WHERE email = ?`, normalizeEmail(email))
 	if err := scanUser(row, &user); err == nil {
+		// ADMIN_PASSWORD is the production source of truth. Synchronize the
+		// stored credential on startup so rotating the Render secret takes
+		// effect even when the SQLite database already contains the admin.
+		hash, salt, hashErr := hashPassword(password)
+		if hashErr != nil {
+			return User{}, hashErr
+		}
+		_, updateErr := s.db.ExecContext(ctx, `
+			UPDATE admin_credentials
+			SET password_hash = ?, password_salt = ?, updated_at = ?
+			WHERE user_id = ?`,
+			hash, salt, formatTime(time.Now().UTC()), user.ID,
+		)
+		if updateErr != nil {
+			return User{}, updateErr
+		}
 		return user, nil
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return User{}, err
