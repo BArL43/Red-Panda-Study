@@ -5684,3 +5684,120 @@ body {
   .status-seal { width: 58px; height: 58px; font-size: 12px; }
   .program-sheet-title h3 { font-size: 30px; }
 }
+
+
+/* Public university catalog refresh — 2026-08-13 */
+.direction-filter {
+  margin-top: 17px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border: 1px solid rgba(24,35,31,.09);
+  border-radius: 4px 18px 4px 18px;
+  background: rgba(255,253,248,.56);
+}
+.direction-filter > span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.direction-filter > div { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+.direction-filter > div::-webkit-scrollbar { display: none; }
+.direction-filter button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid rgba(14,90,78,.11);
+  border-radius: 999px;
+  color: var(--ink);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 180ms var(--ease);
+}
+.direction-filter button:hover { border-color: rgba(14,90,78,.35); }
+.direction-filter button.active { border-color: var(--jade); color: white; background: var(--jade); }
+
+.public-university-grid { gap: 22px; }
+.public-university-card {
+  position: relative;
+  min-height: 510px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(14,90,78,.045), transparent 36%),
+    rgba(255,253,249,.82);
+}
+.public-university-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 86px;
+  height: 86px;
+  border-top: 3px solid rgba(216,75,52,.48);
+  border-right: 3px solid rgba(216,75,52,.48);
+  border-radius: 0 25px 0 0;
+  pointer-events: none;
+}
+.public-university-card:hover { transform: translateY(-4px); box-shadow: 11px 13px 0 rgba(14,90,78,.075); }
+.public-university-card .catalog-country { margin-top: 29px; }
+.public-university-card h2 { margin-top: 9px; margin-bottom: 15px; }
+.public-university-card .catalog-name-en { min-height: 36px; margin-bottom: 18px; }
+
+.university-facts {
+  margin-bottom: 19px;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  border: 1px solid rgba(24,35,31,.09);
+  border-radius: 3px 15px 3px 15px;
+  overflow: hidden;
+  background: rgba(255,255,255,.45);
+}
+.university-facts > div { min-height: 64px; padding: 11px 13px; display: grid; align-content: center; gap: 5px; }
+.university-facts > div:nth-child(2) { border-left: 1px solid rgba(24,35,31,.09); }
+.university-facts > div:nth-child(3) { grid-column: 1 / -1; border-top: 1px solid rgba(24,35,31,.09); }
+.university-facts span { color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.university-facts strong { font-size: 12px; font-weight: 750; line-height: 1.25; }
+.university-facts .university-price { background: var(--jade-pale); }
+.university-facts .university-price strong { color: var(--jade); font-family: var(--font-display), Georgia, serif; font-size: 20px; letter-spacing: -.02em; }
+.university-facts .university-price small { margin-left: 3px; font-family: inherit; font-size: 9px; font-weight: 650; }
+.public-university-card .catalog-directions { margin-bottom: 21px; }
+.public-university-card .catalog-card-bottom > span { max-width: 125px; color: var(--muted); line-height: 1.4; }
+.public-university-card .catalog-card-bottom a { align-self: center; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .main-nav {
+    inset: 68px 0 auto auto;
+    width: min(88vw, 360px);
+    max-height: calc(100svh - 68px);
+    padding: 22px 24px 28px;
+    overflow-y: auto;
+    border-left: 1px solid var(--line);
+    border-bottom-left-radius: 24px;
+    box-shadow: -18px 20px 45px rgba(24,35,31,.14);
+    transform: translateX(18px);
+  }
+  .main-nav.is-open { transform: translateX(0); }
+  .main-nav a { text-align: left; }
+  .direction-filter { margin-inline: -15px; padding: 12px 15px; grid-template-columns: 1fr; gap: 10px; border-inline: 0; border-radius: 0; }
+  .direction-filter > div { padding-right: 24px; }
+  .explorer-meta span:last-child { max-width: 210px; }
+  .public-university-card { min-height: 0; padding: 23px 21px 21px; }
+  .public-university-card .catalog-country { margin-top: 21px; }
+  .public-university-card h2 { font-size: 28px; line-height: 1.02; }
+  .public-university-card .catalog-name-en { min-height: 0; margin-bottom: 16px; }
+  .university-facts { grid-template-columns: 1.2fr .8fr; }
+  .university-facts > div:nth-child(3) { grid-column: auto; border-top: 0; border-left: 1px solid rgba(24,35,31,.09); }
+  .university-facts > div:nth-child(2) { display: none; }
+  .public-university-card .catalog-directions { flex-wrap: nowrap; margin-right: -21px; padding-right: 21px; overflow-x: auto; scrollbar-width: none; }
+  .public-university-card .catalog-directions::-webkit-scrollbar { display: none; }
+  .public-university-card .catalog-directions span { flex: 0 0 auto; }
+  .public-university-card .catalog-card-bottom { grid-template-columns: 1fr; gap: 12px; }
+  .public-university-card .catalog-card-bottom > span { max-width: none; }
+  .public-university-card .catalog-card-bottom a { justify-self: start; }
+}
