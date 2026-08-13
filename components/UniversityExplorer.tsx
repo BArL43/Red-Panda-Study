@@ -6,8 +6,31 @@ import { universitySummaries } from "@/lib/university-summaries";
 
 const INITIAL_COUNT = 12;
 
+const directionGroups = [
+  { label: "Все направления", keywords: [] },
+  { label: "IT и AI", keywords: ["computer", "ai", "data", "кибер", "программ", "software", "информац"] },
+  { label: "Инженерия", keywords: ["инжен", "техн", "робот", "электр", "механ", "строитель", "авиац", "транспорт"] },
+  { label: "Бизнес", keywords: ["бизнес", "эконом", "финанс", "менедж", "торгов", "маркет", "account"] },
+  { label: "Медицина", keywords: ["медицин", "биомед", "стомат", "фарма", "health", "nursing", "психолог"] },
+  { label: "Науки", keywords: ["физик", "хими", "математ", "биолог", "эколог", "science", "материал"] },
+  { label: "Архитектура и дизайн", keywords: ["архитект", "дизайн", "градостро", "искусств", "медиа", "кино"] },
+  { label: "Гуманитарные", keywords: ["право", "журналист", "коммуникац", "язык", "лингв", "педагог", "социаль", "human"] },
+] as const;
+
+function tuitionLabel(value: number) {
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value);
+}
+
+function languageLabel(languages: readonly string[]) {
+  const joined = languages.join(" ").toLowerCase();
+  if (joined.includes("англий") && joined.includes("китай")) return "китайский / английский";
+  if (joined.includes("англий")) return "английский";
+  return "китайский";
+}
+
 export function UniversityExplorer() {
   const [country, setCountry] = useState("Все");
+  const [direction, setDirection] = useState("Все направления");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
 
@@ -15,13 +38,19 @@ export function UniversityExplorer() {
     () =>
       universitySummaries.filter((item) => {
         const matchesCountry = country === "Все" || item.country === country;
-        const haystack = `${item.nameRu} ${item.nameEn} ${item.city} ${item.directions.join(" ")}`.toLowerCase();
-        return matchesCountry && haystack.includes(query.trim().toLowerCase());
+        const selectedGroup = directionGroups.find((group) => group.label === direction);
+        const directions = item.directions.join(" ").toLowerCase();
+        const matchesDirection =
+          !selectedGroup?.keywords.length ||
+          selectedGroup.keywords.some((keyword) => directions.includes(keyword));
+        const haystack = `${item.nameRu} ${item.nameEn} ${item.city} ${directions}`.toLowerCase();
+        return matchesCountry && matchesDirection && haystack.includes(query.trim().toLowerCase());
       }),
-    [country, query],
+    [country, direction, query],
   );
 
-  const visible = expanded || query || country !== "Все" ? filtered : filtered.slice(0, INITIAL_COUNT);
+  const hasFilters = Boolean(query) || country !== "Все" || direction !== "Все направления";
+  const visible = expanded || hasFilters ? filtered : filtered.slice(0, INITIAL_COUNT);
 
   return (
     <section className="section-shell explorer-section">
@@ -29,13 +58,13 @@ export function UniversityExplorer() {
         <span className="catalog-intro-mark">40</span>
         <div>
           <span className="eyebrow">Открытая карта</span>
-          <h2>Смотрите все вузы. Подбирайте программу вместе с куратором.</h2>
+          <h2>Сравните вузы до первой консультации.</h2>
           <p>
-            Здесь — города и сильные направления. После диагностики в личном кабинете
-            откроются 157 программ с экзаменами, документами, сроками и комментариями команды.
+            В открытом каталоге видны направления, язык и ориентир стоимости. В личном кабинете —
+            требования, экзамены, дедлайны и проверенный командой план поступления.
           </p>
         </div>
-        <Link className="button button-primary" href="/consultation">Получить доступ <span>↗</span></Link>
+        <Link className="button button-primary" href="/consultation">Подобрать вуз <span>↗</span></Link>
       </div>
 
       <div className="explorer-toolbar">
@@ -62,28 +91,60 @@ export function UniversityExplorer() {
         </label>
       </div>
 
+      <div className="direction-filter" aria-label="Фильтр по направлениям">
+        <span>Направление</span>
+        <div>
+          {directionGroups.map((group) => (
+            <button
+              type="button"
+              className={direction === group.label ? "active" : ""}
+              onClick={() => { setDirection(group.label); setExpanded(true); }}
+              key={group.label}
+            >
+              {group.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="explorer-meta">
-        <span>{filtered.length} вузов</span>
-        <span>Требования обновляются и перепроверяются куратором</span>
+        <span>{filtered.length} вузов найдено</span>
+        <span>Цены — ориентир «от», зависят от программы и курса валют</span>
       </div>
 
       <div className="catalog-grid public-university-grid">
         {visible.map((university, index) => (
           <article className="catalog-card public-university-card" key={university.nameRu}>
             <div className="catalog-card-top">
-              <span className="catalog-code">{university.code.slice(0, 4)}</span>
+              <span className="catalog-code">{university.code.slice(0, 8)}</span>
               <span className="catalog-index">{String(index + 1).padStart(2, "0")}</span>
             </div>
             <span className="catalog-country">{university.country} · {university.city}</span>
             <h2>{university.nameRu}</h2>
             <p className="catalog-name-en">{university.nameEn}</p>
+
+            <div className="university-facts">
+              <div className="university-price">
+                <span>Обучение</span>
+                <strong>от {tuitionLabel(university.tuitionFromRub)} ₽<small>/год</small></strong>
+              </div>
+              <div>
+                <span>Язык программ</span>
+                <strong>{languageLabel(university.languages)}</strong>
+              </div>
+              <div>
+                <span>В базе RPS</span>
+                <strong>{university.programCount} программ</strong>
+              </div>
+            </div>
+
             <div className="catalog-directions" aria-label="Основные направления">
-              {university.directions.slice(0, 3).map((direction) => <span key={direction}>{direction}</span>)}
+              {university.directions.slice(0, 3).map((item) => <span key={item}>{item}</span>)}
               {university.directions.length > 3 && <small>+{university.directions.length - 3}</small>}
             </div>
             <div className="catalog-card-bottom">
-              <span>{university.programCount} {university.programCount === 1 ? "программа" : "программы"} в базе</span>
-              <Link href="/consultation">Разобрать с куратором →</Link>
+              <span>Требования доступны после диагностики</span>
+              <Link href="/consultation">Разобрать шансы →</Link>
             </div>
           </article>
         ))}
@@ -98,9 +159,15 @@ export function UniversityExplorer() {
       {filtered.length === 0 && (
         <div className="empty-state">
           <span>⌕</span>
-          <h2>Такого варианта пока нет</h2>
-          <p>Оставьте запрос — куратор проверит программы шире открытого каталога.</p>
-          <Link className="button button-primary" href="/consultation">Оставить запрос</Link>
+          <h2>По этим фильтрам ничего не найдено</h2>
+          <p>Сбросьте направление или оставьте запрос — куратор проверит варианты шире каталога.</p>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => { setCountry("Все"); setDirection("Все направления"); setQuery(""); }}
+          >
+            Сбросить фильтры
+          </button>
         </div>
       )}
 
