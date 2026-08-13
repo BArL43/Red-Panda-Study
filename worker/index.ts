@@ -57,11 +57,13 @@ function apiOrigin(env?: Env) {
     typeof process !== "undefined"
       ? (process.env as unknown as Partial<Env>)
       : undefined;
-  const privateHost =
-    env?.GO_API_HOSTPORT?.trim() || nodeEnv?.GO_API_HOSTPORT?.trim();
   const publicURL =
     env?.GO_API_URL?.trim() || nodeEnv?.GO_API_URL?.trim();
-  const configured = privateHost ? `http://${privateHost}` : publicURL;
+  const privateHost =
+    env?.GO_API_HOSTPORT?.trim() || nodeEnv?.GO_API_HOSTPORT?.trim();
+  // An explicitly configured public URL is authoritative. GO_API_HOSTPORT may
+  // remain as a stale Blueprint service reference after manual Render setup.
+  const configured = publicURL || (privateHost ? `http://${privateHost}` : undefined);
   return (configured || DEFAULT_API_ORIGIN).replace(/\/$/, "");
 }
 
