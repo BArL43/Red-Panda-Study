@@ -3,6 +3,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+RUN go test ./...
 RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o /out/red-panda-api ./cmd/server
 
 FROM debian:bookworm-slim

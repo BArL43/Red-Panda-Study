@@ -2787,6 +2787,20 @@ a {
   font-size: 11px;
 }
 .portal-banner-error button { border: 0; background: transparent; cursor: pointer; }
+.portal-banner-success {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border: 1px solid rgba(31, 118, 88, .16);
+  border-radius: 10px;
+  color: #185f48;
+  background: #e6f4ed;
+  font-size: 11px;
+}
+.portal-banner-success button { border: 0; color: inherit; background: transparent; cursor: pointer; }
 
 .portal-table { display: grid; overflow-x: auto; }
 .portal-table-row {
@@ -2823,6 +2837,17 @@ a {
 .assignment-form label, .portal-modal label, .auth-card label { display: grid; gap: 7px; }
 .assignment-form label > span, .portal-modal label > span, .auth-card label > span { color: var(--muted); font-size: 9px; font-weight: 680; }
 .assignment-form select { width: 100%; height: 44px; }
+.assignment-form select:disabled { cursor: not-allowed; opacity: .58; }
+.assignment-current {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  background: #f4f1eb;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.assignment-current strong { color: var(--ink); }
 .assignment-arrow { color: var(--red); text-align: center; }
 .people-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
 .people-grid article,
@@ -3075,6 +3100,12 @@ a {
 .compass-intro-orbit span { font-family: Georgia, serif; font-size: 78px; opacity: .13; }
 .compass-intro-orbit i { position: absolute; width: 11px; height: 11px; top: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 7px rgba(227,66,47,.15); }
 .compass-intro-orbit b { position: absolute; padding: 8px 10px; border-radius: 8px; color: var(--night); background: white; font-size: 9px; letter-spacing: .1em; transform: translate(65px, 53px); }
+
+.compass-provider-state { display: inline-flex; align-items: center; gap: 7px; width: fit-content; margin-top: 14px; padding: 7px 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; color: rgba(255,255,255,.72); font-size: 9px; }
+.compass-provider-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.compass-provider-state.ready { color: #a8e2c4; }
+.compass-provider-state.fallback { color: #ffd3c9; }
+.compass-provider-state.checking { color: rgba(255,255,255,.6); }
 
 .compass-form { padding: 30px; }
 .compass-form-grid { margin-top: 24px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 15px; }

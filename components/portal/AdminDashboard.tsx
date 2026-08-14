@@ -65,6 +65,9 @@ export function AdminDashboard() {
   const [selectedPerson, setSelectedPerson] = useState<User | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<number | undefined>();
   const [busy, setBusy] = useState(false);
+  const [assignmentStudent, setAssignmentStudent] = useState("");
+  const [assignmentMentor, setAssignmentMentor] = useState("");
+  const [assignmentNotice, setAssignmentNotice] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -155,17 +158,38 @@ export function AdminDashboard() {
     }
   };
 
+  const chooseAssignmentStudent = (value: string) => {
+    setAssignmentStudent(value);
+    setAssignmentNotice("");
+    const studentID = Number(value);
+    const currentMentor = studentID ? mentorForStudent(studentID) : undefined;
+    setAssignmentMentor(currentMentor ? String(currentMentor.id) : "");
+  };
+
   const assign = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    setError("");
+    setAssignmentNotice("");
+    const studentID = Number(assignmentStudent);
+    const mentorID = Number(assignmentMentor);
+    const student = students.find((item) => item.id === studentID);
+    const mentor = mentors.find((item) => item.id === mentorID);
+    if (!student || !mentor) {
+      setError("Выберите ученика и наставника из списка активных аккаунтов");
+      return;
+    }
+    if (mentorForStudent(studentID)?.id === mentorID) {
+      setAssignmentNotice(`${mentor.name} уже назначен наставником для ${student.name}`);
+      return;
+    }
     setBusy(true);
     try {
       await api("/admin/assignments", {
         method: "POST",
-        body: JSON.stringify({ student_id: Number(form.get("student_id")), mentor_id: Number(form.get("mentor_id")) }),
+        body: JSON.stringify({ student_id: studentID, mentor_id: mentorID }),
       });
       await load();
-      event.currentTarget.reset();
+      setAssignmentNotice(`${mentor.name} назначен наставником для ${student.name}`);
     } catch (assignError) {
       setError(assignError instanceof Error ? assignError.message : "Не удалось назначить наставника");
     } finally {
@@ -216,6 +240,7 @@ export function AdminDashboard() {
       </div>
 
       {error && <p className="portal-banner-error">{error}<button type="button" onClick={() => setError("")}>×</button></p>}
+      {assignmentNotice && <p className="portal-banner-success">{assignmentNotice}<button type="button" onClick={() => setAssignmentNotice("")}>×</button></p>}
 
       {tab === "overview" && data && (
         <>
@@ -288,10 +313,27 @@ export function AdminDashboard() {
           <div className="portal-card">
             <div className="portal-card-head"><div><span className="portal-eyebrow">Распределение нагрузки</span><h2>Назначить наставника</h2></div></div>
             <form className="assignment-form" onSubmit={assign}>
-              <label><span>Ученик</span><select name="student_id" required defaultValue=""><option value="" disabled>Выберите ученика</option>{students.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+              <label>
+                <span>Ученик</span>
+                <select name="student_id" required value={assignmentStudent} disabled={!students.length || busy} onChange={(event) => chooseAssignmentStudent(event.target.value)}>
+                  <option value="" disabled>{students.length ? "Выберите ученика" : "Нет активных учеников"}</option>
+                  {students.map((item) => <option value={item.id} key={item.id}>{item.name} · {item.email}</option>)}
+                </select>
+              </label>
+              {assignmentStudent && (
+                <p className="assignment-current">
+                  Сейчас: <strong>{mentorForStudent(Number(assignmentStudent))?.name ?? "наставник не назначен"}</strong>
+                </p>
+              )}
               <span className="assignment-arrow">→</span>
-              <label><span>Наставник</span><select name="mentor_id" required defaultValue=""><option value="" disabled>Выберите наставника</option>{mentors.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-              <button className="portal-button primary" disabled={busy}>{busy ? "Назначаем…" : "Назначить"}</button>
+              <label>
+                <span>Наставник</span>
+                <select name="mentor_id" required value={assignmentMentor} disabled={!mentors.length || busy} onChange={(event) => { setAssignmentMentor(event.target.value); setAssignmentNotice(""); }}>
+                  <option value="" disabled>{mentors.length ? "Выберите наставника" : "Нет активных наставников"}</option>
+                  {mentors.map((item) => <option value={item.id} key={item.id}>{item.name} · {studentsForMentor(item.id).length} учеников</option>)}
+                </select>
+              </label>
+              <button className="portal-button primary" disabled={busy || !assignmentStudent || !assignmentMentor}>{busy ? "Назначаем…" : mentorForStudent(Number(assignmentStudent)) ? "Переназначить" : "Назначить"}</button>
             </form>
           </div>
           <div className="portal-card">

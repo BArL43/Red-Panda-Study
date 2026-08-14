@@ -22,6 +22,8 @@ export function StudentDashboard() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"route" | "universities" | "compass" | "tasks" | "chat">("route");
+  const [taskBusy, setTaskBusy] = useState<number | null>(null);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -40,11 +42,18 @@ export function StudentDashboard() {
   }, [user, load]);
 
   const updateTask = async (id: number, status: string) => {
+    if (taskBusy !== null) return;
+    setTaskBusy(id);
+    setError("");
+    setNotice("");
     try {
       await api(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
       await load();
+      setNotice(status === "done" ? "Задача отмечена выполненной" : "Задача возвращена в работу");
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Задача не обновилась");
+    } finally {
+      setTaskBusy(null);
     }
   };
 
@@ -83,7 +92,8 @@ export function StudentDashboard() {
         <button className={tab === "tasks" ? "active" : ""} onClick={() => setTab("tasks")}>Задачи · {data.tasks.length}</button>
         <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>Команда</button>
       </div>
-      {error && <p className="portal-banner-error">{error}<button onClick={() => setError("")}>×</button></p>}
+      {error && <p className="portal-banner-error">{error}<button type="button" onClick={() => setError("")}>×</button></p>}
+      {notice && <p className="portal-banner-success">{notice}<button type="button" onClick={() => setNotice("")}>×</button></p>}
 
       {tab === "route" && (
         <>
@@ -126,7 +136,7 @@ export function StudentDashboard() {
           <div className="student-task-list">
             {data.tasks.map((task) => (
               <article key={task.id}>
-                <button className={`task-check ${task.status}`} type="button" onClick={() => updateTask(task.id, task.status === "done" ? "todo" : "done")}>{task.status === "done" ? "✓" : ""}</button>
+                <button className={`task-check ${task.status}`} type="button" disabled={taskBusy !== null} aria-label={task.status === "done" ? "Вернуть задачу в работу" : "Отметить задачу выполненной"} onClick={() => updateTask(task.id, task.status === "done" ? "todo" : "done")}>{taskBusy === task.id ? "…" : task.status === "done" ? "✓" : ""}</button>
                 <div><strong>{task.title}</strong><p>{task.description}</p></div>
                 <span className={`status-pill ${task.status}`}>{task.status === "done" ? "Готово" : task.status === "in_progress" ? "В работе" : "К выполнению"}</span>
                 <time>{formatDate(task.due_at)}</time>

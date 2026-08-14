@@ -49,18 +49,22 @@ function json(value: unknown, status = 200) {
   });
 }
 
+function nodeEnvironment(): Partial<Env> | undefined {
+  return typeof process !== "undefined"
+    ? (process.env as unknown as Partial<Env>)
+    : undefined;
+}
+
+function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL") {
+  return env?.[key]?.trim() || nodeEnvironment()?.[key]?.trim();
+}
+
 function apiOrigin(env?: Env) {
   // Cloudflare supplies bindings as `env`; the Node/Vinext server on Render
   // exposes them through process.env. Vinext may still pass an empty env object,
   // so resolve each value independently instead of treating env as authoritative.
-  const nodeEnv =
-    typeof process !== "undefined"
-      ? (process.env as unknown as Partial<Env>)
-      : undefined;
-  const publicURL =
-    env?.GO_API_URL?.trim() || nodeEnv?.GO_API_URL?.trim();
-  const privateHost =
-    env?.GO_API_HOSTPORT?.trim() || nodeEnv?.GO_API_HOSTPORT?.trim();
+  const publicURL = runtimeValue(env, "GO_API_URL");
+  const privateHost = runtimeValue(env, "GO_API_HOSTPORT");
   // An explicitly configured public URL is authoritative. GO_API_HOSTPORT may
   // remain as a stale Blueprint service reference after manual Render setup.
   const configured = publicURL || (privateHost ? `http://${privateHost}` : undefined);
@@ -94,6 +98,35 @@ async function handleUniversityRequirements(request: Request, env: Env) {
   return json({ programs: universityPrograms, checkedAt: "2026-08-09" });
 }
 
+async function handleCompassStatus(request: Request, env: Env) {
+  if (request.method !== "GET") {
+    return json({ error: "Метод не поддерживается" }, 405);
+  }
+  const user = await compassUser(request, env);
+  if (!user?.id) {
+    return json({ error: "Войдите в кабинет ученика" }, 401);
+  }
+  const apiKey = runtimeValue(env, "VIBE_API_KEY");
+  const model = runtimeValue(env, "VIBE_MODEL") || "gpt-5.6-sol";
+  if (!apiKey) {
+    return json({ configured: false, available: false, provider: "VibeMarketolog", model });
+  }
+  try {
+    const response = await fetch("https://lk.vibemarketolog.ru/api/agent/me", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(12_000),
+    });
+    return json({
+      configured: true,
+      available: response.ok,
+      provider: "VibeMarketolog",
+      model,
+    });
+  } catch {
+    return json({ configured: true, available: false, provider: "VibeMarketolog", model });
+  }
+}
+
 async function handleCompass(request: Request, env: Env) {
   if (request.method !== "POST") {
     return json({ error: "Метод не поддерживается" }, 405);
@@ -110,7 +143,7 @@ async function handleCompass(request: Request, env: Env) {
     const payload = await request.json() as { profile?: unknown };
     const profile = validateCompassProfile(payload.profile);
     const base = buildRuleAnalysis(profile);
-    const apiKey = env.VIBE_API_KEY?.trim();
+    const apiKey = runtimeValue(env, "VIBE_API_KEY");
     if (!apiKey) {
       return json({ analysis: base });
     }
@@ -145,7 +178,7 @@ async function handleCompass(request: Request, env: Env) {
         profile,
         base,
         apiKey,
-        model: env.VIBE_MODEL?.trim() || "gpt-5.6-sol",
+        model: runtimeValue(env, "VIBE_MODEL") || "gpt-5.6-sol",
         userId: user.id,
       });
       compassCache.set(cacheKey, { expiresAt: now + COMPASS_CACHE_MS, analysis });
@@ -176,6 +209,10 @@ const worker = {
 
     if (url.pathname === "/demo" || url.pathname.startsWith("/demo/")) {
       return new Response("Not found", { status: 404 });
+    }
+
+    if (url.pathname === "/api/compass/status") {
+      return handleCompassStatus(request, env);
     }
 
     if (url.pathname === "/api/compass/analyze") {

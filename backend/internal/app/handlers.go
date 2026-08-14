@@ -270,6 +270,10 @@ func (s *Server) handleAssignMentor(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &input) {
 		return
 	}
+	if input.MentorID <= 0 || input.StudentID <= 0 {
+		writeError(w, http.StatusBadRequest, "Выберите ученика и наставника")
+		return
+	}
 	if err := s.store.AssignMentor(r.Context(), user.ID, input.MentorID, input.StudentID); err != nil {
 		writeStoreError(w, err)
 		return

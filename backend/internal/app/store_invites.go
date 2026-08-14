@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -228,22 +229,29 @@ func (s *Store) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 func (s *Store) AssignMentor(ctx context.Context, actorID, mentorID, studentID int64) error {
-	var mentorRole, studentRole string
-	if err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = ?`, mentorID).Scan(&mentorRole); err != nil {
+	if mentorID <= 0 || studentID <= 0 {
 		return ErrNotFound
 	}
-	if err := s.db.QueryRowContext(ctx, `SELECT role FROM users WHERE id = ?`, studentID).Scan(&studentRole); err != nil {
+	var mentorRole, mentorStatus, studentRole, studentStatus string
+	if err := s.db.QueryRowContext(ctx, `SELECT role, status FROM users WHERE id = ?`, mentorID).Scan(&mentorRole, &mentorStatus); err != nil {
 		return ErrNotFound
 	}
-	if mentorRole != "mentor" || studentRole != "student" {
-		return fmt.Errorf("%w: invalid roles", ErrConflict)
+	if err := s.db.QueryRowContext(ctx, `SELECT role, status FROM users WHERE id = ?`, studentID).Scan(&studentRole, &studentStatus); err != nil {
+		return ErrNotFound
 	}
+	if mentorRole != "mentor" || studentRole != "student" || mentorStatus != "active" || studentStatus != "active" {
+		return fmt.Errorf("%w: assignment requires active mentor and student accounts", ErrConflict)
+	}
+
 	now := formatTime(time.Now().UTC())
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+
+	// A student has exactly one active mentor. Reassignment is intentionally
+	// idempotent and also repairs legacy duplicate rows.
 	if _, err := tx.ExecContext(ctx, `DELETE FROM mentor_assignments WHERE student_id = ?`, studentID); err != nil {
 		return err
 	}
@@ -252,13 +260,32 @@ func (s *Store) AssignMentor(ctx context.Context, actorID, mentorID, studentID i
 		mentorID, studentID, now); err != nil {
 		return err
 	}
+
+	// Old or imported student accounts may not have a conversation yet. Create
+	// it before assigning so the mentor immediately sees the student chat.
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO conversations(kind, user_id, subject, status, assigned_to, display_name, updated_at)
+		SELECT 'student', u.id, 'Сопровождение поступления', 'open', ?, u.name, ?
+		FROM users u
+		WHERE u.id = ?
+		  AND NOT EXISTS (
+			SELECT 1 FROM conversations c WHERE c.kind = 'student' AND c.user_id = u.id
+		  )`,
+		mentorID, now, studentID); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE conversations SET assigned_to = ?, updated_at = ? WHERE kind = 'student' AND user_id = ?`,
 		mentorID, now, studentID); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
+
+	metadata, _ := json.Marshal(map[string]any{"mentor_id": mentorID})
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO audit_log(actor_user_id, action, entity_type, entity_id, metadata, created_at)
+		VALUES(?, 'mentor.assigned', 'user', ?, ?, ?)`,
+		actorID, studentID, string(metadata), now); err != nil {
 		return err
 	}
-	return s.audit(ctx, &actorID, "mentor.assigned", "user", studentID, map[string]any{"mentor_id": mentorID})
+	return tx.Commit()
 }

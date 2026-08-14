@@ -107,6 +107,13 @@ function ProgramCard({ program }: { program: CompassProgramResult }) {
   );
 }
 
+type CompassProviderStatus = {
+  configured: boolean;
+  available: boolean;
+  provider: string;
+  model: string;
+};
+
 export function StudentCompass({ userId }: { userId: number }) {
   const storageKey = `red-panda-compass:${userId}`;
   const [profile, setProfile] = useState<CompassProfile>(initialProfile);
@@ -114,6 +121,25 @@ export function StudentCompass({ userId }: { userId: number }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [providerStatus, setProviderStatus] = useState<CompassProviderStatus | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/compass/status", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<CompassProviderStatus>;
+      })
+      .then((status) => {
+        if (status) setProviderStatus(status);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -203,6 +229,13 @@ export function StudentCompass({ userId }: { userId: number }) {
           <span className="portal-eyebrow light">Red Panda Compass · AI</span>
           <h2>Цифровой двойник вашего поступления</h2>
           <p>Правила проверят формальные требования, бюджет и экзамены. ИИ объяснит выбор, сравнит сценарии и подготовит понятный отчёт для родителей.</p>
+          <span className={`compass-provider-state ${providerStatus?.available ? "ready" : providerStatus ? "fallback" : "checking"}`}>
+            {providerStatus?.available
+              ? `AI подключён · ${providerStatus.model}`
+              : providerStatus
+                ? "Базовый анализ доступен · AI временно недоступен"
+                : "Проверяем подключение AI…"}
+          </span>
         </div>
         <div className="compass-intro-orbit" aria-hidden="true"><span>北</span><i /><b>AI</b></div>
       </section>

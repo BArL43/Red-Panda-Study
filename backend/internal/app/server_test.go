@@ -158,6 +158,36 @@ func TestCompleteServiceFlowAndRoleBoundaries(t *testing.T) {
 		t.Fatalf("mentor task is not visible to student: %v", dashboard)
 	}
 	api.request(studentClient, http.MethodPatch, "/api/v1/tasks/"+strconv.FormatInt(taskID, 10), map[string]any{"status": "done"}, http.StatusNoContent)
+
+	// Assigning the same pair is idempotent, and reassignment moves both the
+	// dashboard relationship and mentor visibility to the new mentor.
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/assignments", map[string]any{
+		"mentor_id": mentorID, "student_id": studentID,
+	}, http.StatusNoContent)
+	secondMentorClient := api.client()
+	secondMentorToken := api.invitation("mentor", "Елена Чжан", "mentor-2@example.test")
+	secondMentor := api.accept(secondMentorClient, secondMentorToken)["user"].(map[string]any)
+	secondMentorID := int64(secondMentor["id"].(float64))
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/assignments", map[string]any{
+		"mentor_id": secondMentorID, "student_id": studentID,
+	}, http.StatusNoContent)
+
+	firstMentorStudents := api.request(mentorClient, http.MethodGet, "/api/v1/mentor/students", nil, http.StatusOK)
+	if len(firstMentorStudents["students"].([]any)) != 0 {
+		t.Fatalf("student remained assigned to previous mentor: %v", firstMentorStudents)
+	}
+	secondMentorStudents := api.request(secondMentorClient, http.MethodGet, "/api/v1/mentor/students", nil, http.StatusOK)
+	if len(secondMentorStudents["students"].([]any)) != 1 {
+		t.Fatalf("reassigned student is not visible to new mentor: %v", secondMentorStudents)
+	}
+	reassignedDashboard := api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	reassignedMentor := reassignedDashboard["dashboard"].(map[string]any)["mentor"].(map[string]any)
+	if int64(reassignedMentor["id"].(float64)) != secondMentorID {
+		t.Fatalf("student dashboard shows stale mentor: %v", reassignedDashboard)
+	}
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/assignments", map[string]any{
+		"mentor_id": 0, "student_id": studentID,
+	}, http.StatusBadRequest)
 	api.request(studentClient, http.MethodGet, "/api/v1/admin/overview", nil, http.StatusForbidden)
 }
 

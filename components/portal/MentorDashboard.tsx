@@ -22,6 +22,7 @@ export function MentorDashboard() {
   const [error, setError] = useState("");
   const [taskOpen, setTaskOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setError("");
@@ -32,7 +33,9 @@ export function MentorDashboard() {
       ]);
       setStudents(studentResult.students);
       setConversations(chatResult.conversations);
-      setSelected((current) => current || studentResult.students[0]?.user.id || 0);
+      setSelected((current) => studentResult.students.some((item) => item.user.id === current)
+        ? current
+        : studentResult.students[0]?.user.id || 0);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Кабинет недоступен");
     }
@@ -49,7 +52,13 @@ export function MentorDashboard() {
   const createTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (!active) {
+      setError("Сначала выберите ученика");
+      return;
+    }
     setBusy(true);
+    setError("");
+    setNotice("");
     try {
       await api("/tasks", {
         method: "POST",
@@ -62,6 +71,7 @@ export function MentorDashboard() {
       });
       setTaskOpen(false);
       await load();
+      setNotice(`Задача для ${active.user.name} добавлена`);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Не удалось создать задачу");
     } finally {
@@ -87,7 +97,8 @@ export function MentorDashboard() {
         <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>Ученики · {students.length}</button>
         <button className={tab === "chat" ? "active" : ""} onClick={() => setTab("chat")}>Диалоги · {conversations.length}</button>
       </div>
-      {error && <p className="portal-banner-error">{error}<button onClick={() => setError("")}>×</button></p>}
+      {error && <p className="portal-banner-error">{error}<button type="button" onClick={() => setError("")}>×</button></p>}
+      {notice && <p className="portal-banner-success">{notice}<button type="button" onClick={() => setNotice("")}>×</button></p>}
 
       {tab === "students" && (
         <section className="mentor-work-grid">
