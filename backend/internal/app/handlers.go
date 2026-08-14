@@ -33,6 +33,40 @@ func (s *Server) handleCreateConsultation(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusCreated, map[string]any{"consultation": item, "message": "Заявка принята. Мы свяжемся с вами в рабочее время."})
 }
 
+func (s *Server) handleCohortAvailability(w http.ResponseWriter, r *http.Request) {
+	const total = 16
+	taken, err := s.store.CohortAvailability(r.Context())
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	if taken > total {
+		taken = total
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"total": total, "taken": taken, "available": total - taken, "open": taken < total,
+	})
+}
+
+func (s *Server) handleRecordAnnualSubscription(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireUser(w, r, "admin"); !ok {
+		return
+	}
+	var input struct {
+		Email     string `json:"email"`
+		Plan      string `json:"plan"`
+		Reference string `json:"reference"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	if err := s.store.RecordAnnualSubscription(r.Context(), input.Email, input.Plan, input.Reference); err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleCreatePublicConversation(w http.ResponseWriter, r *http.Request) {
 	if !s.allowPublic(w, r) {
 		return
