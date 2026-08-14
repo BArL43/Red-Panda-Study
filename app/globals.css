@@ -3316,7 +3316,7 @@ a {
 .invite-activation-error { display: grid; gap: 5px; padding: 13px 15px; border: 1px solid rgba(216,75,52,.18); border-radius: 12px; color: var(--red-dark); background: #fff2ee; }
 .invite-activation-error strong { font-size: 10px; }
 .invite-activation-error span { font-size: 9px; line-height: 1.5; }
-.invite-side { display: flex; flex-direction: column; justify-content: flex-end; padding: 65px; color: white; background: radial-gradient(circle at 80% 20%, rgba(227,66,47,.5), transparent 28%), var(--night); }
+.invite-side { position: relative; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; padding: 65px; color: white; background: radial-gradient(circle at 80% 20%, rgba(227,66,47,.5), transparent 28%), var(--night); }
 .invite-side span { color: var(--red); font-size: 70px; opacity: .55; }
 .invite-side h2 { max-width: 430px; margin: 20px 0 12px; font-size: 42px; line-height: 1; letter-spacing: -.06em; }
 .invite-side p { max-width: 400px; margin: 0; color: rgba(255,255,255,.53); font-size: 11px; line-height: 1.6; }
@@ -5307,6 +5307,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: linear-gradient(to top, rgba(16,40,33,.88), rgba(16,40,33,.1) 70%), url("/hero-production.png") center / cover;
   opacity: .68;
 }
