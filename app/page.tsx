@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Reveal } from "@/components/Reveal";
 import { HeroCompass } from "@/components/HeroCompass";
 import { CompassFlow } from "@/components/CompassFlow";
+import { CohortCounter } from "@/components/CohortCounter";
 import { universitySummaries } from "@/lib/university-summaries";
 
 const universities = universitySummaries.slice(0, 4).map((university) => ({
@@ -84,6 +85,10 @@ export default function Home() {
           <span>Контроль до зачисления</span>
         </div>
       </section>
+
+      <div className="section-shell home-cohort-wrap">
+        <CohortCounter compact />
+      </div>
 
       <section className="home-compass-section" id="compass">
         <div className="section-shell home-compass-heading">
