@@ -90,7 +90,7 @@ func (a *testAPI) request(client *http.Client, method, path string, body any, ex
 
 func (a *testAPI) loginAdmin() {
 	a.request(a.admin, http.MethodPost, "/api/v1/admin/login", map[string]any{
-		"email": a.cfg.AdminEmail, "password": a.cfg.AdminPassword,
+		"password": a.cfg.AdminPassword,
 	}, http.StatusOK)
 }
 
