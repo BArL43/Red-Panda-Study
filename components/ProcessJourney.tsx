@@ -51,7 +51,7 @@ export function ProcessJourney() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % stages.length);
-    }, 4600);
+    }, 6500);
     return () => window.clearInterval(timer);
   }, []);
 
