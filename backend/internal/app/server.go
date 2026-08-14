@@ -55,7 +55,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "service": "red-panda-study-api", "time": time.Now().UTC()})
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "service": "red-panda-study-api", "admin_ready": true, "time": time.Now().UTC()})
 }
 
 func (s *Server) recover(next http.Handler) http.Handler {
