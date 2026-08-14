@@ -31,6 +31,10 @@ func main() {
 		slog.Error("seed admin", "error", err)
 		os.Exit(1)
 	}
+	if _, err := store.AuthenticateAdmin(context.Background(), cfg.AdminEmail, cfg.AdminPassword); err != nil {
+		slog.Error("admin credential self-check failed", "error", err)
+		os.Exit(1)
+	}
 	if cfg.DevelopmentMode {
 		slog.Info("development admin ready", "email", admin.Email)
 	}
