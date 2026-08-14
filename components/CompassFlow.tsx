@@ -16,7 +16,7 @@ export function CompassFlow() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setActive((value) => (value + 1) % stages.length), 2600);
+    const timer = window.setInterval(() => setActive((value) => (value + 1) % stages.length), 4200);
     return () => window.clearInterval(timer);
   }, []);
 
