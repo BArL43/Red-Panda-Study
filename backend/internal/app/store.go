@@ -203,21 +203,39 @@ func (s *Store) SeedAdmin(ctx context.Context, email, password string) (User, er
 	row := s.db.QueryRowContext(ctx, `SELECT id, role, name, email, status, created_at FROM users WHERE email = ?`, normalizeEmail(email))
 	if err := scanUser(row, &user); err == nil {
 		// ADMIN_PASSWORD is the production source of truth. Synchronize the
-		// stored credential on startup so rotating the Render secret takes
-		// effect even when the SQLite database already contains the admin.
+		// stored credential on every startup so rotating the Render secret
+		// always takes effect. UPSERT also repairs an incomplete legacy row.
+		if user.Role != "admin" {
+			return User{}, fmt.Errorf("configured ADMIN_EMAIL belongs to a non-admin user")
+		}
 		hash, salt, hashErr := hashPassword(password)
 		if hashErr != nil {
 			return User{}, hashErr
 		}
-		_, updateErr := s.db.ExecContext(ctx, `
-			UPDATE admin_credentials
-			SET password_hash = ?, password_salt = ?, updated_at = ?
-			WHERE user_id = ?`,
-			hash, salt, formatTime(time.Now().UTC()), user.ID,
-		)
-		if updateErr != nil {
-			return User{}, updateErr
+		now := formatTime(time.Now().UTC())
+		tx, txErr := s.db.BeginTx(ctx, nil)
+		if txErr != nil {
+			return User{}, txErr
 		}
+		defer tx.Rollback()
+		if _, txErr = tx.ExecContext(ctx, `UPDATE users SET status = 'active' WHERE id = ?`, user.ID); txErr != nil {
+			return User{}, txErr
+		}
+		if _, txErr = tx.ExecContext(ctx, `
+			INSERT INTO admin_credentials(user_id, password_hash, password_salt, updated_at)
+			VALUES(?, ?, ?, ?)
+			ON CONFLICT(user_id) DO UPDATE SET
+				password_hash = excluded.password_hash,
+				password_salt = excluded.password_salt,
+				updated_at = excluded.updated_at`,
+			user.ID, hash, salt, now,
+		); txErr != nil {
+			return User{}, txErr
+		}
+		if txErr = tx.Commit(); txErr != nil {
+			return User{}, txErr
+		}
+		user.Status = "active"
 		return user, nil
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return User{}, err
