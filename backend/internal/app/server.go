@@ -25,6 +25,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 
 	mux.HandleFunc("GET /api/health", server.handleHealth)
 	mux.HandleFunc("POST /api/v1/consultations", server.handleCreateConsultation)
+	mux.HandleFunc("GET /api/v1/cohort", server.handleCohortAvailability)
 	mux.HandleFunc("POST /api/v1/chat/conversations", server.handleCreatePublicConversation)
 	mux.HandleFunc("GET /api/v1/chat/conversations/{id}", server.handleGetPublicConversation)
 	mux.HandleFunc("POST /api/v1/chat/conversations/{id}/messages", server.handleAddPublicMessage)
@@ -38,6 +39,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 	mux.HandleFunc("POST /api/v1/admin/invitations", server.handleCreateInvitation)
 	mux.HandleFunc("POST /api/v1/admin/assignments", server.handleAssignMentor)
 	mux.HandleFunc("PATCH /api/v1/admin/consultations/{id}", server.handleUpdateConsultation)
+	mux.HandleFunc("POST /api/v1/admin/subscriptions", server.handleRecordAnnualSubscription)
 
 	mux.HandleFunc("GET /api/v1/conversations", server.handleListConversations)
 	mux.HandleFunc("GET /api/v1/conversations/{id}", server.handleGetConversation)
