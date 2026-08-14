@@ -162,9 +162,9 @@ func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &input) {
 		return
 	}
-	user, err := s.store.AuthenticateAdmin(r.Context(), input.Email, input.Password)
+	user, err := s.store.AuthenticateAdmin(r.Context(), s.cfg.AdminEmail, strings.TrimSpace(input.Password))
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "Неверный email или пароль")
+		writeError(w, http.StatusUnauthorized, "Неверный пароль администратора")
 		return
 	}
 	session, err := s.store.CreateSession(r.Context(), user.ID, s.cfg.SessionTTL)
