@@ -91,6 +91,16 @@ func (s *Store) migrate(ctx context.Context) error {
 			status TEXT NOT NULL DEFAULT 'new',
 			created_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS annual_subscriptions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			customer_email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+			student_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+			plan TEXT NOT NULL CHECK(plan IN ('start','admission','select')),
+			status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','cancelled','refunded')),
+			purchase_reference TEXT UNIQUE,
+			purchased_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS student_profiles (
 			user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			country TEXT NOT NULL DEFAULT 'Не выбрано',
@@ -147,6 +157,7 @@ func (s *Store) migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_sessions_hash ON sessions(token_hash)`,
 		`CREATE INDEX IF NOT EXISTS idx_invitations_hash ON invitations(token_hash)`,
 		`CREATE INDEX IF NOT EXISTS idx_consultations_created ON consultations(created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_annual_subscriptions_status ON annual_subscriptions(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id, status)`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)`,
@@ -157,6 +168,34 @@ func (s *Store) migrate(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *Store) CohortAvailability(ctx context.Context) (int, error) {
+	var taken int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM annual_subscriptions WHERE status = 'active'`).Scan(&taken)
+	return taken, err
+}
+
+func (s *Store) RecordAnnualSubscription(ctx context.Context, email, plan, reference string) error {
+	email = normalizeEmail(email)
+	plan = strings.ToLower(strings.TrimSpace(plan))
+	if email == "" || (plan != "start" && plan != "admission" && plan != "select") {
+		return ErrConflict
+	}
+	var studentID sql.NullInt64
+	_ = s.db.QueryRowContext(ctx, `SELECT id FROM users WHERE email = ? AND role = 'student'`, email).Scan(&studentID)
+	now := formatTime(time.Now().UTC())
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO annual_subscriptions(customer_email, student_id, plan, status, purchase_reference, purchased_at, updated_at)
+		VALUES(?, ?, ?, 'active', NULLIF(?, ''), ?, ?)
+		ON CONFLICT(customer_email) DO UPDATE SET
+			student_id = excluded.student_id,
+			plan = excluded.plan,
+			status = 'active',
+			purchase_reference = COALESCE(excluded.purchase_reference, annual_subscriptions.purchase_reference),
+			updated_at = excluded.updated_at`,
+		email, studentID, plan, strings.TrimSpace(reference), now, now)
+	return err
 }
 
 func (s *Store) SeedAdmin(ctx context.Context, email, password string) (User, error) {
