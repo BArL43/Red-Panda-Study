@@ -35,7 +35,7 @@ export function HeroCompass() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % routes.length);
-    }, 4400);
+    }, 6000);
     return () => window.clearInterval(timer);
   }, []);
 
