@@ -22,7 +22,7 @@ export function AdminLogin() {
     try {
       await api("/admin/login", {
         method: "POST",
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+        body: JSON.stringify({ password: form.get("password") }),
       });
       window.location.assign("/admin");
     } catch (loginError) {
@@ -48,9 +48,8 @@ export function AdminLogin() {
           <span className="auth-panda"><i /><b /></span>
           <span className="portal-eyebrow">Отдельный вход</span>
           <h2>Панель администратора</h2>
-          <p>Введите корпоративные данные. Сессия хранится в защищённой HttpOnly cookie.</p>
-          <label><span>Email</span><input name="email" type="email" required autoComplete="username" placeholder="admin@redpandastudy.com" /></label>
-          <label><span>Пароль</span><input name="password" type="password" required minLength={12} autoComplete="current-password" placeholder="••••••••••••" /></label>
+          <p>Введите пароль администратора. Сессия хранится в защищённой HttpOnly cookie.</p>
+          <label><span>Пароль</span><input name="password" type="password" required minLength={12} autoComplete="current-password" placeholder="Пароль из настроек проекта" /></label>
           {error && <p className="portal-inline-error">{error}</p>}
           <button className="portal-button primary wide" disabled={busy} type="submit">{busy ? "Проверяем…" : "Войти в панель"} <span>→</span></button>
           <Link href="/">← Вернуться на сайт</Link>
