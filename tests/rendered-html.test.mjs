@@ -185,3 +185,83 @@ test("accepts a validated VibeMarketolog explanation without changing the shortl
     globalThis.fetch = originalFetch;
   }
 });
+
+test("checks the paid Compass path with a free generate estimate", { concurrency: false }, async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("vibe-status-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const originalFetch = globalThis.fetch;
+  let estimateCalled = false;
+  globalThis.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init);
+    const url = new URL(request.url);
+    if (url.hostname === "red-panda-study-api.onrender.com" && url.pathname === "/api/v1/me") {
+      return Response.json({ user: { id: 91, role: "student", name: "Status Student", email: "status@example.com" } });
+    }
+    if (url.hostname === "lk.vibemarketolog.ru" && url.pathname === "/api/agent/generate/estimate") {
+      estimateCalled = true;
+      assert.equal(request.method, "POST");
+      assert.match(request.headers.get("authorization") ?? "", /^Bearer /);
+      const body = JSON.parse(await request.text());
+      assert.equal(body.model, "gpt-5.6-sol");
+      return Response.json({ valid: true, estimated_cost: 0.01 });
+    }
+    return originalFetch(input, init);
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/compass/status", { headers: { Cookie: "rps_session=status-session" } }),
+      {
+        ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+        GO_API_URL: "https://red-panda-study-api.onrender.com",
+        VIBE_API_KEY: "oc_test_only",
+        VIBE_MODEL: "gpt-5.6-sol",
+      },
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.available, true);
+    assert.equal(payload.reason, "ready");
+    assert.equal(estimateCalled, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("returns a safe Compass configuration reason without exposing provider secrets", { concurrency: false }, async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("vibe-scope-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init);
+    const url = new URL(request.url);
+    if (url.hostname === "red-panda-study-api.onrender.com" && url.pathname === "/api/v1/me") {
+      return Response.json({ user: { id: 92, role: "student", name: "Scope Student", email: "scope@example.com" } });
+    }
+    if (url.hostname === "lk.vibemarketolog.ru" && url.pathname === "/api/agent/generate/estimate") {
+      return Response.json({ error: "insufficient_scope", required: "generate", token: "must-not-leak" }, { status: 403 });
+    }
+    return originalFetch(input, init);
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/compass/status", { headers: { Cookie: "rps_session=scope-session" } }),
+      {
+        ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+        GO_API_URL: "https://red-panda-study-api.onrender.com",
+        VIBE_API_KEY: "oc_test_only",
+      },
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    const payload = await response.json();
+    assert.equal(payload.available, false);
+    assert.equal(payload.reason, "insufficient_scope");
+    assert.ok(!JSON.stringify(payload).includes("must-not-leak"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
