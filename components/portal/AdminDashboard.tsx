@@ -54,7 +54,7 @@ function sameOriginInviteLink(rawLink: string) {
 }
 
 export function AdminDashboard() {
-  const { user, checking } = usePortalAuth("admin");
+  const { user, checking, authError, retry: retryAuth } = usePortalAuth("admin");
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<AdminTab>("overview");
@@ -114,7 +114,9 @@ export function AdminDashboard() {
     [studentConversation, students],
   );
 
-  if (checking || !user) return <LoadingPortal />;
+  if (checking) return <LoadingPortal />;
+  if (authError) return <PortalError message={authError} retry={retryAuth} />;
+  if (!user) return <LoadingPortal />;
   if (error && !data) return <PortalError message={error} retry={load} />;
 
   const navigation = [
