@@ -112,6 +112,15 @@ func (s *Store) MentorStudents(ctx context.Context, mentorID int64) ([]MentorStu
 }
 
 func (s *Store) CreateTask(ctx context.Context, actor SessionUser, studentID int64, title, description string, dueAt *time.Time) (Task, error) {
+	var studentRole, studentStatus string
+	if err := s.db.QueryRowContext(ctx, `SELECT role, status FROM users WHERE id = ?`, studentID).Scan(&studentRole, &studentStatus); errors.Is(err, sql.ErrNoRows) {
+		return Task{}, ErrNotFound
+	} else if err != nil {
+		return Task{}, err
+	}
+	if studentRole != "student" || studentStatus != "active" {
+		return Task{}, ErrConflict
+	}
 	if actor.Role == "mentor" {
 		var count int
 		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mentor_assignments WHERE mentor_id = ? AND student_id = ?`, actor.ID, studentID).Scan(&count); err != nil {
@@ -173,7 +182,8 @@ func (s *Store) UpdateTaskStatus(ctx context.Context, actor SessionUser, taskID 
 	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET status = ? WHERE id = ?`, status, taskID); err != nil {
 		return err
 	}
-	return s.audit(ctx, &actor.ID, "task.status_changed", "task", taskID, map[string]any{"status": status})
+	_ = s.audit(ctx, &actor.ID, "task.status_changed", "task", taskID, map[string]any{"status": status})
+	return nil
 }
 
 func (s *Store) UpdateStudentProfile(ctx context.Context, actor SessionUser, studentID int64, profile StudentProfile) error {
@@ -205,7 +215,8 @@ func (s *Store) UpdateStudentProfile(ctx context.Context, actor SessionUser, stu
 	if affected == 0 {
 		return ErrNotFound
 	}
-	return s.audit(ctx, &actor.ID, "student.profile_updated", "user", studentID, map[string]any{"progress": profile.Progress})
+	_ = s.audit(ctx, &actor.ID, "student.profile_updated", "user", studentID, map[string]any{"progress": profile.Progress})
+	return nil
 }
 
 func (s *Store) AdminCounts(ctx context.Context) (map[string]int, error) {
