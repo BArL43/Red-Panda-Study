@@ -14,7 +14,7 @@ type Student = {
 type Conversation = { id: number; kind: string; subject: string; display_name: string; updated_at: string; user_id?: number };
 
 export function MentorDashboard() {
-  const { user, checking } = usePortalAuth("mentor");
+  const { user, checking, authError, retry: retryAuth } = usePortalAuth("mentor");
   const [students, setStudents] = useState<Student[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState(0);
@@ -79,7 +79,9 @@ export function MentorDashboard() {
     }
   };
 
-  if (checking || !user) return <LoadingPortal label="Собираем учеников и дедлайны" />;
+  if (checking) return <LoadingPortal label="Собираем учеников и дедлайны" />;
+  if (authError) return <PortalError message={authError} retry={retryAuth} />;
+  if (!user) return <LoadingPortal label="Собираем учеников и дедлайны" />;
   if (error && !students.length) return <PortalError message={error} retry={load} />;
 
   return (
