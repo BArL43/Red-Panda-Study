@@ -109,6 +109,33 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string, sessionTTL tim
 		if existing.Role != invitation.Role || existing.Status != "active" {
 			return User{}, "", ErrConflict
 		}
+		// Re-accepting an invitation must also repair legacy accounts that were
+		// created before profiles and private conversations became mandatory.
+		if existing.Role == "student" {
+			if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO student_profiles(user_id) VALUES(?)`, existing.ID); err != nil {
+				return User{}, "", err
+			}
+			conversationResult, err := tx.ExecContext(ctx, `
+				INSERT INTO conversations(kind, user_id, subject, status, display_name, created_at, updated_at)
+				SELECT 'student', ?, 'Сопровождение поступления', 'open', ?, ?, ?
+				WHERE NOT EXISTS (SELECT 1 FROM conversations WHERE kind = 'student' AND user_id = ?)`,
+				existing.ID, existing.Name, formatTime(now), formatTime(now), existing.ID)
+			if err != nil {
+				return User{}, "", err
+			}
+			if created, _ := conversationResult.RowsAffected(); created == 1 {
+				var conversationID int64
+				if err := tx.QueryRowContext(ctx, `SELECT id FROM conversations WHERE kind = 'student' AND user_id = ?`, existing.ID).Scan(&conversationID); err != nil {
+					return User{}, "", err
+				}
+				if _, err := tx.ExecContext(ctx, `
+					INSERT INTO messages(conversation_id, sender_type, sender_name, body, created_at)
+					VALUES(?, 'system', 'Red Panda Study', ?, ?)`, conversationID,
+					"Добро пожаловать! Здесь команда и наставник будут вести всю коммуникацию по вашему поступлению.", formatTime(now)); err != nil {
+					return User{}, "", err
+				}
+			}
+		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET used_at = ? WHERE id = ? AND used_at IS NULL`, formatTime(now), invitation.ID)
 		if err != nil {
 			return User{}, "", err
@@ -264,14 +291,14 @@ func (s *Store) AssignMentor(ctx context.Context, actorID, mentorID, studentID i
 	// Old or imported student accounts may not have a conversation yet. Create
 	// it before assigning so the mentor immediately sees the student chat.
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO conversations(kind, user_id, subject, status, assigned_to, display_name, updated_at)
-		SELECT 'student', u.id, 'Сопровождение поступления', 'open', ?, u.name, ?
+		INSERT INTO conversations(kind, user_id, subject, status, assigned_to, display_name, created_at, updated_at)
+		SELECT 'student', u.id, 'Сопровождение поступления', 'open', ?, u.name, ?, ?
 		FROM users u
 		WHERE u.id = ?
 		  AND NOT EXISTS (
 			SELECT 1 FROM conversations c WHERE c.kind = 'student' AND c.user_id = u.id
 		  )`,
-		mentorID, now, studentID); err != nil {
+		mentorID, now, now, studentID); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, `
