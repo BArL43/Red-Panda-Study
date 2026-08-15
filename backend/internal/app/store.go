@@ -46,6 +46,8 @@ func OpenStore(path string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+func (s *Store) Ready(ctx context.Context) error { return s.db.PingContext(ctx) }
+
 func (s *Store) migrate(ctx context.Context) error {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -161,6 +163,11 @@ func (s *Store) migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id, status)`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)`,
+		// Repair any legacy duplicate assignments before enforcing the business
+		// rule at database level: one active mentor per student.
+		`DELETE FROM mentor_assignments
+		 WHERE rowid NOT IN (SELECT MAX(rowid) FROM mentor_assignments GROUP BY student_id)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_mentor_assignments_student ON mentor_assignments(student_id)`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.ExecContext(ctx, statement); err != nil {
@@ -368,7 +375,8 @@ func (s *Store) UpdateConsultationStatus(ctx context.Context, actorID, id int64,
 	if affected == 0 {
 		return ErrNotFound
 	}
-	return s.audit(ctx, &actorID, "consultation.status_changed", "consultation", id, map[string]any{"status": status})
+	_ = s.audit(ctx, &actorID, "consultation.status_changed", "consultation", id, map[string]any{"status": status})
+	return nil
 }
 
 func formatTime(value time.Time) string { return value.UTC().Format(time.RFC3339Nano) }
