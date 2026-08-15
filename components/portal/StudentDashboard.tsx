@@ -18,7 +18,7 @@ type Dashboard = {
 };
 
 export function StudentDashboard() {
-  const { user, checking } = usePortalAuth("student");
+  const { user, checking, authError, retry: retryAuth } = usePortalAuth("student");
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"route" | "universities" | "compass" | "tasks" | "chat">("route");
@@ -57,7 +57,9 @@ export function StudentDashboard() {
     }
   };
 
-  if (checking || !user) return <LoadingPortal label="Открываем вашу траекторию" />;
+  if (checking) return <LoadingPortal label="Открываем вашу траекторию" />;
+  if (authError) return <PortalError message={authError} retry={retryAuth} />;
+  if (!user) return <LoadingPortal label="Открываем вашу траекторию" />;
   if (error && !data) return <PortalError message={error} retry={load} />;
   if (!data) return <LoadingPortal />;
 
