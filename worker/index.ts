@@ -12,6 +12,8 @@ const DEFAULT_API_ORIGIN = "https://red-panda-study-api.onrender.com";
 const COMPASS_DAILY_LIMIT = 5;
 const COMPASS_COOLDOWN_MS = 60_000;
 const COMPASS_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
+const UPSTREAM_TIMEOUT_MS = 25_000;
+const VIBE_PROBE_TIMEOUT_MS = 12_000;
 
 type CompassUsage = { day: string; count: number; lastRequestAt: number };
 const compassUsage = new Map<number, CompassUsage>();
@@ -24,6 +26,7 @@ interface Env {
   GO_API_HOSTPORT?: string;
   VIBE_API_KEY?: string;
   VIBE_MODEL?: string;
+  RENDER_GIT_COMMIT?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -55,8 +58,102 @@ function nodeEnvironment(): Partial<Env> | undefined {
     : undefined;
 }
 
-function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL") {
+function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL" | "RENDER_GIT_COMMIT") {
   return env?.[key]?.trim() || nodeEnvironment()?.[key]?.trim();
+}
+
+type CompassProviderReason =
+  | "ready"
+  | "not_configured"
+  | "invalid_key"
+  | "insufficient_scope"
+  | "insufficient_balance"
+  | "daily_limit"
+  | "rate_limited"
+  | "ip_restricted"
+  | "email_unconfirmed"
+  | "invalid_model"
+  | "provider_unavailable"
+  | "network_error";
+
+type CompassProviderStatus = {
+  configured: boolean;
+  available: boolean;
+  provider: "VibeMarketolog";
+  model: string;
+  reason: CompassProviderReason;
+  message: string;
+};
+
+const providerMessages: Record<CompassProviderReason, string> = {
+  ready: "AI подключён и готов к платному анализу.",
+  not_configured: "Ключ VIBE_API_KEY не задан в веб-сервисе Render.",
+  invalid_key: "VibeMarketolog отклонил API-ключ. Проверьте значение ключа в Render.",
+  insufficient_scope: "API-ключу не выдано право generate.",
+  insufficient_balance: "На балансе VibeMarketolog недостаточно средств для анализа.",
+  daily_limit: "В VibeMarketolog достигнут дневной лимит расходов.",
+  rate_limited: "VibeMarketolog временно ограничил частоту запросов.",
+  ip_restricted: "IP-ограничения API-ключа не разрешают запросы из Render.",
+  email_unconfirmed: "В аккаунте VibeMarketolog требуется подтвердить email.",
+  invalid_model: "Выбранная AI-модель недоступна для этого ключа.",
+  provider_unavailable: "VibeMarketolog временно не принимает запросы.",
+  network_error: "Render не смог установить соединение с VibeMarketolog.",
+};
+
+function providerReason(status: number, detail: string): CompassProviderReason {
+  const normalized = detail.toLowerCase();
+  if (status === 401) return "invalid_key";
+  if (normalized.includes("insufficient_scope") || normalized.includes("scope")) return "insufficient_scope";
+  if (normalized.includes("insufficient_balance") || normalized.includes("balance")) return "insufficient_balance";
+  if (normalized.includes("daily_spend_limit") || normalized.includes("daily limit")) return "daily_limit";
+  if (normalized.includes("ip_restricted") || normalized.includes("ip restriction")) return "ip_restricted";
+  if (normalized.includes("email") && normalized.includes("confirm")) return "email_unconfirmed";
+  if (normalized.includes("model") || status === 422) return "invalid_model";
+  if (status === 429) return "rate_limited";
+  return "provider_unavailable";
+}
+
+async function probeCompassProvider(env: Env): Promise<CompassProviderStatus> {
+  const apiKey = runtimeValue(env, "VIBE_API_KEY");
+  const model = runtimeValue(env, "VIBE_MODEL") || "gpt-5.6-sol";
+  if (!apiKey) {
+    return { configured: false, available: false, provider: "VibeMarketolog", model, reason: "not_configured", message: providerMessages.not_configured };
+  }
+  try {
+    // /generate/estimate is free and validates the same `generate` permission,
+    // model and request shape that the paid Compass request uses. /me requires
+    // a separate `read` scope and therefore produced false negative statuses.
+    const response = await fetch("https://lk.vibemarketolog.ru/api/agent/generate/estimate", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "text",
+        model,
+        prompt: "Проверка доступности Red Panda Compass. Ответь одним словом: OK.",
+        max_tokens: 32,
+        effort: "low",
+        thinking: false,
+        strict: true,
+      }),
+      signal: AbortSignal.timeout(VIBE_PROBE_TIMEOUT_MS),
+    });
+    const detail = await response.text();
+    if (!response.ok) {
+      const reason = providerReason(response.status, detail);
+      return { configured: true, available: false, provider: "VibeMarketolog", model, reason, message: providerMessages[reason] };
+    }
+    let valid = true;
+    try {
+      const payload = JSON.parse(detail) as { valid?: boolean };
+      valid = payload.valid !== false;
+    } catch {
+      valid = true;
+    }
+    const reason: CompassProviderReason = valid ? "ready" : "invalid_model";
+    return { configured: true, available: valid, provider: "VibeMarketolog", model, reason, message: providerMessages[reason] };
+  } catch {
+    return { configured: true, available: false, provider: "VibeMarketolog", model, reason: "network_error", message: providerMessages.network_error };
+  }
 }
 
 function apiOrigin(env?: Env) {
@@ -78,6 +175,7 @@ async function portalUser(request: Request, env: Env) {
   const response = await fetch(new Request(new URL("/api/v1/me", apiOrigin(env)), {
     method: "GET",
     headers,
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   }));
   if (!response.ok) return null;
   const payload = await response.json() as {
@@ -106,25 +204,31 @@ async function handleCompassStatus(request: Request, env: Env) {
   if (!user?.id) {
     return json({ error: "Войдите в кабинет ученика" }, 401);
   }
-  const apiKey = runtimeValue(env, "VIBE_API_KEY");
-  const model = runtimeValue(env, "VIBE_MODEL") || "gpt-5.6-sol";
-  if (!apiKey) {
-    return json({ configured: false, available: false, provider: "VibeMarketolog", model });
-  }
+  return json(await probeCompassProvider(env));
+}
+
+async function handleRuntimeHealth(request: Request, env: Env) {
+  if (request.method !== "GET") return json({ error: "Метод не поддерживается" }, 405);
+  const startedAt = Date.now();
+  let backend: { available: boolean; databaseReady?: boolean; commit?: string; latencyMs: number };
   try {
-    const response = await fetch("https://lk.vibemarketolog.ru/api/agent/me", {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(12_000),
+    const response = await fetch(new URL("/api/health", apiOrigin(env)), {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
-    return json({
-      configured: true,
-      available: response.ok,
-      provider: "VibeMarketolog",
-      model,
-    });
+    const payload = await response.json().catch(() => ({})) as { database_ready?: boolean; commit?: string };
+    backend = { available: response.ok, databaseReady: payload.database_ready, commit: payload.commit, latencyMs: Date.now() - startedAt };
   } catch {
-    return json({ configured: true, available: false, provider: "VibeMarketolog", model });
+    backend = { available: false, latencyMs: Date.now() - startedAt };
   }
+  const compass = await probeCompassProvider(env);
+  return json({
+    status: backend.available && compass.available ? "ok" : "degraded",
+    frontend: { available: true, commit: runtimeValue(env, "RENDER_GIT_COMMIT") || "unknown" },
+    backend,
+    compass,
+    checkedAt: new Date().toISOString(),
+  });
 }
 
 async function handleCompass(request: Request, env: Env) {
@@ -145,7 +249,7 @@ async function handleCompass(request: Request, env: Env) {
     const base = buildRuleAnalysis(profile);
     const apiKey = runtimeValue(env, "VIBE_API_KEY");
     if (!apiKey) {
-      return json({ analysis: base });
+      return json({ analysis: { ...base, notice: providerMessages.not_configured }, aiStatus: "not_configured" });
     }
     const profileHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(profile)))
       .then((digest) => Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join(""));
@@ -184,12 +288,17 @@ async function handleCompass(request: Request, env: Env) {
       compassCache.set(cacheKey, { expiresAt: now + COMPASS_CACHE_MS, analysis });
       return json({ analysis });
     } catch (aiError) {
-      console.error("Compass AI enrichment failed", aiError instanceof Error ? aiError.message : "unknown error");
+      const detail = aiError instanceof Error ? aiError.message : "unknown error";
+      console.error("Compass AI enrichment failed", detail);
+      compassUsage.set(user.id, usage);
+      const statusMatch = detail.match(/VibeMarketolog\s+(\d{3})/);
+      const reason = providerReason(statusMatch ? Number(statusMatch[1]) : 503, detail);
       return json({
         analysis: {
           ...base,
-          notice: "Правиловый расчёт готов. AI-пояснение временно недоступно; попробуйте повторить позже.",
+          notice: `Правиловый расчёт готов. ${providerMessages[reason]}`,
         },
+        aiStatus: reason,
       });
     }
   } catch (error) {
@@ -215,6 +324,10 @@ const worker = {
       return handleCompassStatus(request, env);
     }
 
+    if (url.pathname === "/api/runtime-health") {
+      return handleRuntimeHealth(request, env);
+    }
+
     if (url.pathname === "/api/compass/analyze") {
       return handleCompass(request, env);
     }
@@ -227,7 +340,22 @@ const worker = {
     // restrictions while the application and the Go API live on separate hosts.
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       const upstreamURL = new URL(`${url.pathname}${url.search}`, apiOrigin(env));
-      const upstream = await fetch(new Request(upstreamURL, request));
+      let upstream: Response;
+      try {
+        const headers = new Headers(request.headers);
+        headers.delete("host");
+        upstream = await fetch(new Request(upstreamURL, {
+          method: request.method,
+          headers,
+          body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+          redirect: "manual",
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+          // Required when forwarding a streaming request body in Node runtimes.
+          duplex: request.body ? "half" : undefined,
+        } as RequestInit));
+      } catch {
+        return json({ error: "Backend временно недоступен. Повторите запрос через минуту." }, 502);
+      }
       const headers = new Headers(upstream.headers);
       // The response crosses two Render/Cloudflare HTTP stacks. Recalculate
       // framing headers so the browser never receives a nested or truncated
