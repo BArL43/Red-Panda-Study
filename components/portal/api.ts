@@ -5,7 +5,6 @@ export type SessionUser = {
   email: string;
 };
 
-const configuredBase = process.env.NEXT_PUBLIC_GO_API_URL?.replace(/\/$/, "") ?? "";
 const requestTimeoutMs = 75_000;
 
 export class ApiError extends Error {
@@ -22,7 +21,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
   try {
-    const response = await fetch(`${configuredBase}/api/v1${path}`, {
+    // Browser requests always use the app origin. The worker proxies them to
+    // the private Render API and preserves the first-party session cookie.
+    const response = await fetch(`/api/v1${path}`, {
       ...init,
       cache: "no-store",
       credentials: "include",
@@ -54,8 +55,9 @@ export async function session(): Promise<SessionUser | null> {
   try {
     const result = await api<{ user: SessionUser }>("/me");
     return result.user;
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return null;
+    throw error;
   }
 }
 
