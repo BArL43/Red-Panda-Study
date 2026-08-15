@@ -18,6 +18,7 @@ type testAPI struct {
 	server *httptest.Server
 	admin  *http.Client
 	cfg    Config
+	store  *Store
 }
 
 func newTestAPI(t *testing.T) *testAPI {
@@ -43,7 +44,7 @@ func newTestAPI(t *testing.T) *testAPI {
 	server := httptest.NewServer(NewServer(cfg, store))
 	t.Cleanup(server.Close)
 	jar, _ := cookiejar.New(nil)
-	return &testAPI{t: t, server: server, admin: &http.Client{Jar: jar}, cfg: cfg}
+	return &testAPI{t: t, server: server, admin: &http.Client{Jar: jar}, cfg: cfg, store: store}
 }
 
 func (a *testAPI) client() *http.Client {
@@ -232,5 +233,91 @@ func TestCrossSiteCookiesRequireSecureTransport(t *testing.T) {
 	cfg.SecureCookies = true
 	if err := ValidateConfig(cfg); err != nil {
 		t.Fatalf("expected valid production config, got %v", err)
+	}
+}
+
+func TestAuthenticationHealthJSONAndCORSBoundaries(t *testing.T) {
+	api := newTestAPI(t)
+	health := api.request(api.client(), http.MethodGet, "/api/health", nil, http.StatusOK)
+	if health["database_ready"] != true {
+		t.Fatalf("database must be ready: %v", health)
+	}
+
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/login", map[string]any{"password": "wrong-password"}, http.StatusUnauthorized)
+	api.loginAdmin()
+	api.request(api.admin, http.MethodGet, "/api/v1/me", nil, http.StatusOK)
+	api.request(api.admin, http.MethodPost, "/api/v1/logout", map[string]any{}, http.StatusNoContent)
+	api.request(api.admin, http.MethodGet, "/api/v1/me", nil, http.StatusUnauthorized)
+
+	trailing, err := http.NewRequest(http.MethodPost, api.server.URL+"/api/v1/admin/login", bytes.NewBufferString(`{"password":"StrongPassword!2026"}{}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	trailing.Header.Set("Content-Type", "application/json")
+	response, err := api.client().Do(trailing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("trailing JSON: got %d, want 400", response.StatusCode)
+	}
+
+	preflight, err := http.NewRequest(http.MethodOptions, api.server.URL+"/api/v1/admin/login", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	preflight.Header.Set("Origin", "https://evil.example")
+	response, err = api.client().Do(preflight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("untrusted preflight: got %d, want 403", response.StatusCode)
+	}
+}
+
+func TestReacceptedStudentRepairsLegacyProfileAndConversation(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+	studentClient := api.client()
+	firstToken := api.invitation("student", "Legacy Student", "legacy@example.test")
+	student := api.accept(studentClient, firstToken)["user"].(map[string]any)
+	studentID := int64(student["id"].(float64))
+
+	if _, err := api.store.db.ExecContext(t.Context(), `DELETE FROM conversations WHERE user_id = ?`, studentID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.store.db.ExecContext(t.Context(), `DELETE FROM student_profiles WHERE user_id = ?`, studentID); err != nil {
+		t.Fatal(err)
+	}
+	secondToken := api.invitation("student", "Legacy Student", "legacy@example.test")
+	api.accept(studentClient, secondToken)
+	dashboard := api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	value := dashboard["dashboard"].(map[string]any)
+	if value["conversation"] == nil || value["profile"] == nil {
+		t.Fatalf("legacy account was not repaired: %v", dashboard)
+	}
+}
+
+func TestTaskAndAssignmentRejectInvalidTargetsAndRepairConversation(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+	mentorClient := api.client()
+	mentor := api.accept(mentorClient, api.invitation("mentor", "Mentor", "mentor-target@example.test"))["user"].(map[string]any)
+	mentorID := int64(mentor["id"].(float64))
+	studentClient := api.client()
+	student := api.accept(studentClient, api.invitation("student", "Student", "student-target@example.test"))["user"].(map[string]any)
+	studentID := int64(student["id"].(float64))
+
+	api.request(api.admin, http.MethodPost, "/api/v1/tasks", map[string]any{"student_id": mentorID, "title": "Invalid target"}, http.StatusConflict)
+	if _, err := api.store.db.ExecContext(t.Context(), `DELETE FROM conversations WHERE user_id = ?`, studentID); err != nil {
+		t.Fatal(err)
+	}
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/assignments", map[string]any{"mentor_id": mentorID, "student_id": studentID}, http.StatusNoContent)
+	dashboard := api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	if dashboard["dashboard"].(map[string]any)["conversation"] == nil {
+		t.Fatalf("assignment did not repair student conversation: %v", dashboard)
 	}
 }
