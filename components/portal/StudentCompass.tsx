@@ -112,6 +112,8 @@ type CompassProviderStatus = {
   available: boolean;
   provider: string;
   model: string;
+  reason: string;
+  message: string;
 };
 
 export function StudentCompass({ userId }: { userId: number }) {
@@ -233,7 +235,7 @@ export function StudentCompass({ userId }: { userId: number }) {
             {providerStatus?.available
               ? `AI подключён · ${providerStatus.model}`
               : providerStatus
-                ? "Базовый анализ доступен · AI временно недоступен"
+                ? `Базовый анализ доступен · ${providerStatus.message}`
                 : "Проверяем подключение AI…"}
           </span>
         </div>
