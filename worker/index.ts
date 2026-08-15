@@ -191,7 +191,12 @@ async function compassUser(request: Request, env: Env) {
 
 async function handleUniversityRequirements(request: Request, env: Env) {
   if (request.method !== "GET") return json({ error: "Метод не поддерживается" }, 405);
-  const user = await portalUser(request, env);
+  let user;
+  try {
+    user = await portalUser(request, env);
+  } catch {
+    return json({ error: "Backend временно недоступен" }, 502);
+  }
   if (!user?.id) return json({ error: "Войдите в личный кабинет" }, 401);
   return json({ programs: universityPrograms, checkedAt: "2026-08-09" });
 }
@@ -200,7 +205,12 @@ async function handleCompassStatus(request: Request, env: Env) {
   if (request.method !== "GET") {
     return json({ error: "Метод не поддерживается" }, 405);
   }
-  const user = await compassUser(request, env);
+  let user;
+  try {
+    user = await compassUser(request, env);
+  } catch {
+    return json({ error: "Backend временно недоступен" }, 502);
+  }
   if (!user?.id) {
     return json({ error: "Войдите в кабинет ученика" }, 401);
   }
@@ -226,7 +236,7 @@ async function handleRuntimeHealth(request: Request, env: Env) {
     status: backend.available && compass.available ? "ok" : "degraded",
     frontend: { available: true, commit: runtimeValue(env, "RENDER_GIT_COMMIT") || "unknown" },
     backend,
-    compass,
+    compass: { available: compass.available },
     checkedAt: new Date().toISOString(),
   });
 }
@@ -239,7 +249,12 @@ async function handleCompass(request: Request, env: Env) {
   if (contentLength > 20_000) {
     return json({ error: "Анкета слишком большая" }, 413);
   }
-  const user = await compassUser(request, env);
+  let user;
+  try {
+    user = await compassUser(request, env);
+  } catch {
+    return json({ error: "Backend временно недоступен. Повторите запрос через минуту." }, 502);
+  }
   if (!user?.id) {
     return json({ error: "Войдите в кабинет ученика" }, 401);
   }
