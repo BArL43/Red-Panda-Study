@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,7 +57,16 @@ func NewServer(cfg Config, store *Store) http.Handler {
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "service": "red-panda-study-api", "admin_ready": true, "time": time.Now().UTC()})
+	status := http.StatusOK
+	databaseReady := s.store.Ready(r.Context()) == nil
+	if !databaseReady {
+		status = http.StatusServiceUnavailable
+	}
+	commit := strings.TrimSpace(os.Getenv("RENDER_GIT_COMMIT"))
+	if commit == "" {
+		commit = "unknown"
+	}
+	writeJSON(w, status, map[string]any{"status": map[bool]string{true: "ok", false: "degraded"}[databaseReady], "service": "red-panda-study-api", "database_ready": databaseReady, "commit": commit, "time": time.Now().UTC()})
 }
 
 func (s *Server) recover(next http.Handler) http.Handler {
@@ -148,6 +159,7 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, raw string) {
 		Value:    raw,
 		Path:     "/",
 		MaxAge:   int(s.cfg.SessionTTL.Seconds()),
+		Expires:  time.Now().UTC().Add(s.cfg.SessionTTL),
 		HttpOnly: true,
 		SameSite: s.sessionSameSite(),
 		Secure:   s.cfg.SecureCookies,
@@ -160,6 +172,7 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
+		Expires:  time.Unix(1, 0).UTC(),
 		HttpOnly: true,
 		SameSite: s.sessionSameSite(),
 		Secure:   s.cfg.SecureCookies,
@@ -195,6 +208,10 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, target any) bool {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		writeError(w, http.StatusBadRequest, "Проверьте заполнение полей")
+		return false
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "Тело запроса должно содержать один JSON-объект")
 		return false
 	}
 	return true
@@ -272,6 +289,13 @@ func (l *ipLimiter) Allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := time.Now()
+	if len(l.items) > 2_000 {
+		for candidate, window := range l.items {
+			if now.Sub(window.start) >= l.window {
+				delete(l.items, candidate)
+			}
+		}
+	}
 	item := l.items[key]
 	if item.start.IsZero() || now.Sub(item.start) >= l.window {
 		l.items[key] = ipWindow{start: now, count: 1}
