@@ -139,7 +139,14 @@ export function StudentCompass({ userId }: { userId: number }) {
       .then((status) => {
         if (status) setProviderStatus(status);
       })
-      .catch(() => undefined);
+      .catch(() => setProviderStatus({
+        configured: false,
+        available: false,
+        provider: "VibeMarketolog",
+        model: "не определена",
+        reason: "backend_unavailable",
+        message: "не удалось проверить подключение AI",
+      }));
     return () => controller.abort();
   }, []);
 
