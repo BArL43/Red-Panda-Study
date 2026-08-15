@@ -1109,6 +1109,7 @@ export async function enrichCompassAnalysis({
       strict: true,
       idempotency_key: await idempotencyKey(userId, requestValue),
     }),
+    signal: AbortSignal.timeout(90_000),
   });
   if (!response.ok) {
     const detail = await response.text();
