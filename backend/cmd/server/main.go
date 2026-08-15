@@ -25,6 +25,21 @@ func main() {
 		os.Exit(1)
 	}
 	defer store.Close()
+	store.CleanupExpired(context.Background())
+	cleanupStop := make(chan struct{})
+	defer close(cleanupStop)
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				store.CleanupExpired(context.Background())
+			case <-cleanupStop:
+				return
+			}
+		}
+	}()
 
 	admin, err := store.SeedAdmin(context.Background(), cfg.AdminEmail, cfg.AdminPassword)
 	if err != nil {
