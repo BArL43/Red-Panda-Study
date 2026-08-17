@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { universitySummaries } from "@/lib/university-summaries";
 
 const INITIAL_COUNT = 12;
@@ -134,12 +135,13 @@ export function UniversityExplorer() {
                 title="Официальный сайт университета"
               >
                 <span aria-hidden="true">{university.code.slice(0, 8)}</span>
-                <img
+                <Image
                   src={university.logoUrl}
                   alt={`Логотип: ${university.nameRu}`}
-                  width="64"
-                  height="64"
+                  width={64}
+                  height={64}
                   loading="lazy"
+                  unoptimized
                   onError={(event) => event.currentTarget.remove()}
                 />
               </a>
