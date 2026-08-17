@@ -32,6 +32,40 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
+test("keeps Panda Product copy, pricing and university catalog visible in rendered HTML", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("content-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const context = { waitUntil() {}, passThroughOnException() {} };
+
+  const [home, services, universities] = await Promise.all([
+    worker.fetch(new Request("http://localhost/"), env, context),
+    worker.fetch(new Request("http://localhost/services"), env, context),
+    worker.fetch(new Request("http://localhost/universities"), env, context),
+  ]);
+
+  assert.equal(home.status, 200);
+  assert.equal(services.status, 200);
+  assert.equal(universities.status, 200);
+
+  const homeHTML = await home.text();
+  assert.match(homeHTML, /Поступление, которое/);
+  assert.match(homeHTML, /Управляемый продукт/);
+  assert.match(homeHTML, /двойную проверку/);
+  assert.doesNotMatch(homeHTML, /\/workspace\/scratch\//);
+
+  const servicesHTML = await services.text();
+  for (const text of ["RPS Strategy", "34 900 ₽", "RPS Start", "49 900 ₽", "RPS Admission", "119 900 ₽", "RPS Select", "189 900 ₽"]) {
+    assert.ok(servicesHTML.includes(text), `services page must include ${text}`);
+  }
+
+  const universitiesHTML = await universities.text();
+  assert.match(universitiesHTML, /Все направления/);
+  assert.match(universitiesHTML, /Обучение/);
+  assert.match(universitiesHTML, /\/год/);
+});
+
 test("builds a rules-first Compass strategy without exposing an API key", { concurrency: false }, async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("compass-test", `${process.pid}-${Date.now()}`);
