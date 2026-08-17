@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const routes = [
   {
@@ -28,37 +28,22 @@ const routes = [
 
 export function HeroCompass() {
   const [active, setActive] = useState(1);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [profileScore, setProfileScore] = useState(80);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % routes.length);
-    }, 6000);
+    }, 9000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const handlePointer = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "touch") return;
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: x * 5, y: y * -4 });
-  };
-
   const route = routes[active];
+  const scoreFor = (score: number) => Math.max(35, Math.min(98, Math.round(score + (profileScore - 80) * 0.45)));
+  const activeScore = scoreFor(route.score);
 
   return (
-    <div
-      id="compass-demo"
-      className="compass-shell"
-      ref={cardRef}
-      onPointerMove={handlePointer}
-      onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-      style={{ "--tilt-x": `${tilt.y}deg`, "--tilt-y": `${tilt.x}deg` } as CSSProperties}
-    >
+    <div id="compass-demo" className="compass-shell">
       <div className="compass-card">
         <header className="compass-card-head">
           <span className="compass-emblem" aria-hidden="true">
@@ -71,6 +56,12 @@ export function HeroCompass() {
           </div>
           <span className="expert-stamp"><i /> Проверено экспертом</span>
         </header>
+
+        <div className="compass-live-control">
+          <label htmlFor="profile-score"><span>Академический профиль</span><strong>{profileScore}/100</strong></label>
+          <input id="profile-score" type="range" min="60" max="100" value={profileScore} onChange={(event) => setProfileScore(Number(event.target.value))} />
+          <small>Передвиньте ползунок — прогноз и три сценария пересчитаются сразу.</small>
+        </div>
 
         <div className="compass-map">
           <div className="map-grain" />
@@ -93,8 +84,8 @@ export function HeroCompass() {
           ))}
           <div className="score-card" key={route.city}>
             <span>Прогноз соответствия</span>
-            <strong>{route.score}<sup>%</sup></strong>
-            <div><i style={{ width: `${route.score}%` }} /></div>
+            <strong>{activeScore}<sup>%</sup></strong>
+            <div><i style={{ width: `${activeScore}%` }} /></div>
             <small>После первичного анализа профиля</small>
           </div>
           <span className="map-label map-label-cn">КИТАЙ</span>
@@ -117,7 +108,7 @@ export function HeroCompass() {
                 <span>{item.type}</span>
                 <strong>{item.city}</strong>
                 <small>{item.program}</small>
-                <div><i>fit</i><b>{item.score}%</b><em>→</em></div>
+                <div><i>fit</i><b>{scoreFor(item.score)}%</b><em>→</em></div>
               </button>
             ))}
           </div>
