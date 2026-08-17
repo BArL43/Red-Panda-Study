@@ -1,18 +1,7 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { SiteChrome } from "@/components/SiteChrome";
 import "./globals.css";
-
-const manrope = Manrope({
-  variable: "--font-body",
-  subsets: ["latin"],
-});
-
-const cormorant = Cormorant_Garamond({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
+import "./panda-product.css";
 
 export const metadata: Metadata = {
   title: {
@@ -37,9 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body
-        className={`${manrope.variable} ${cormorant.variable} antialiased`}
-      >
+      <body className="antialiased">
         <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
