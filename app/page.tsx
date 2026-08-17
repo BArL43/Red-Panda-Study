@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Reveal } from "@/components/Reveal";
 import { HeroCompass } from "@/components/HeroCompass";
 import { CompassFlow } from "@/components/CompassFlow";
 import { CohortCounter } from "@/components/CohortCounter";
+import { PandaProductStage } from "@/components/PandaProductStage";
 import { universitySummaries } from "@/lib/university-summaries";
 
 const universities = universitySummaries.slice(0, 4).map((university) => ({
@@ -23,67 +23,33 @@ const steps = [
 export default function Home() {
   return (
     <>
-      <section className="hero section-shell">
+      <section className="hero panda-product-hero section-shell">
         <div className="hero-copy">
           <div className="hero-kicker">
-            <span className="kicker-new">NEW</span>
-            <span>AI-навигатор Compass + экспертная проверка</span>
+            <span className="kicker-new">RPS</span>
+            <span>Compass AI + личная команда поступления</span>
           </div>
-          <h1>
-            Ваш маршрут в лучшие университеты <em>Азии</em>
-          </h1>
+          <h1>Поступление, которое <em>можно контролировать</em></h1>
           <p>
-            Получите персональную стратегию сразу: варианты ambitious, target и
-            safe, честный бюджет и дедлайны. Затем эксперт проверит каждое решение.
+            Собираем поступление в Китай и Гонконг в понятный маршрут: программы,
+            документы, дедлайны и работа команды — в одном продукте.
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/consultation">
-              Построить мой маршрут <span>↗</span>
+              Построить мой маршрут <span>→</span>
             </Link>
             <Link className="button button-secondary" href="/services">
-              Как мы проверяем качество <span>→</span>
+              Посмотреть тарифы <span>↗</span>
             </Link>
           </div>
-          <div className="hero-proof-grid">
-            <span><i>塔</i><b>Китай · Гонконг</b><small>проверенная база</small></span>
-            <span><i>◷</i><b>Ответ за 5 минут</b><small>без ожидания звонка</small></span>
-            <span><i>✓</i><b>Проверено экспертом</b><small>двойной контроль</small></span>
-          </div>
         </div>
-        <div className="hero-visual bamboo-hero-visual">
-          <Image
-            src="/hero-production.png"
-            alt="Красная панда Лин с картой маршрута в университеты Азии"
-            fill
-            priority
-            unoptimized
-            sizes="(max-width: 1040px) 100vw, 48vw"
-          />
-          <span className="hero-field-note">Проводник по поступлению · Лин</span>
-          <div className="hero-route-ticket">
-            <span>RPS / ROUTE 01</span>
-            <strong>Москва → Азия</strong>
-            <small>Китай · Гонконг · набор 2027</small>
-          </div>
-          <div className="hero-compass-ticket">
-            <span>Compass preview</span>
-            <div><b>68%</b><small>ambitious</small></div>
-            <div><b>82%</b><small>target</small></div>
-            <div><b>94%</b><small>safe</small></div>
-            <Link href="/consultation" aria-label="Начать диагностику Compass">↗</Link>
-          </div>
-        </div>
-        <span className="hero-scroll-cue">Прокрутите, чтобы увидеть маршрут <i /></span>
+        <PandaProductStage />
       </section>
 
-      <section className="trust-strip">
-        <div>
-          <span>Профиль и цели</span><i />
-          <span>Compass-анализ</span><i />
-          <span>Экспертный shortlist</span><i />
-          <span>Сильная заявка</span><i />
-          <span>Контроль до зачисления</span>
-        </div>
+      <section className="section-shell panda-proof-strip" aria-label="Ключевые показатели сервиса">
+        <article><strong>40</strong><span>университетов</span><p>Китай и Гонконг в единой проверенной базе.</p></article>
+        <article><strong>157</strong><span>программ</span><p>Требования, стоимость и дедлайны внутри кабинета.</p></article>
+        <article><strong>2×</strong><span>контроль</span><p>Compass ускоряет анализ, эксперт подтверждает решение.</p></article>
       </section>
 
       <div className="section-shell home-cohort-wrap">
@@ -107,6 +73,59 @@ export default function Home() {
       </section>
 
       <CompassFlow />
+
+      <section className="section-shell product-bento-section">
+        <Reveal className="section-heading split-heading">
+          <div>
+            <span className="eyebrow">Весь маршрут в одном месте</span>
+            <h2>Не набор чатов. Управляемый продукт.</h2>
+          </div>
+          <p>Compass, кабинет и команда работают как одна система — с понятными статусами и следующими действиями.</p>
+        </Reveal>
+        <div className="product-bento-grid">
+          <Reveal className="product-bento-card product-bento-large">
+            <span className="product-bento-index">01 · COMPASS</span>
+            <div><strong>40</strong><small>университетов</small></div>
+            <h3>Compass AI собирает три сценария поступления</h3>
+            <p>Сопоставляет профиль с 157 программами, бюджетом и требованиями. Эксперт подтверждает итоговый shortlist.</p>
+            <Link href="/consultation">Построить маршрут <b>→</b></Link>
+          </Reveal>
+          <Reveal className="product-bento-card" delay={70}>
+            <span className="product-bento-index">02 · CABINET</span>
+            <div className="bento-progress"><i /><i /><i /><i /></div>
+            <h3>Личный кабинет</h3>
+            <p>Задачи, документы, решения и прогресс не теряются в переписке.</p>
+          </Reveal>
+          <Reveal className="product-bento-card" delay={120}>
+            <span className="product-bento-index">03 · DEADLINES</span>
+            <div className="bento-date"><strong>21</strong><span>авг<br />2027</span></div>
+            <h3>Контроль сроков</h3>
+            <p>У каждого дедлайна есть ответственный и следующий шаг.</p>
+          </Reveal>
+          <Reveal className="product-bento-card product-bento-red" delay={170}>
+            <span className="product-bento-index">04 · TEAM</span>
+            <div className="bento-team"><i>А</i><i>М</i><i>+</i></div>
+            <h3>Команда рядом</h3>
+            <p>Куратор, стратег и редактор видят одну актуальную картину.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="section-shell quality-ledger-section">
+        <Reveal className="quality-ledger-card">
+          <div>
+            <span className="eyebrow eyebrow-light">Стандарт Red Panda</span>
+            <h2>Каждая важная точка проходит двойную проверку</h2>
+            <p>Решение не считается готовым, пока его не проверили по содержанию и формальным требованиям.</p>
+          </div>
+          <strong className="quality-ledger-score">2×</strong>
+          <ol>
+            <li><b>01</b><span>Стратегия и shortlist</span><i>проверено</i></li>
+            <li><b>02</b><span>Документы и версии</span><i>проверено</i></li>
+            <li><b>03</b><span>Комплект перед подачей</span><i>проверено</i></li>
+          </ol>
+        </Reveal>
+      </section>
 
       <section className="section-shell direction-section">
         <Reveal className="section-heading split-heading">
