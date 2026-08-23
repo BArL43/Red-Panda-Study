@@ -321,3 +321,49 @@ func TestTaskAndAssignmentRejectInvalidTargetsAndRepairConversation(t *testing.T
 		t.Fatalf("assignment did not repair student conversation: %v", dashboard)
 	}
 }
+
+
+func TestCompassAnalysisPersistsAndMentorCanReadAssignedStudent(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+
+	studentClient := api.client()
+	student := api.accept(studentClient, api.invitation("student", "Compass Student", "compass-student@example.test"))["user"].(map[string]any)
+	studentID := int64(student["id"].(float64))
+	mentorClient := api.client()
+	mentor := api.accept(mentorClient, api.invitation("mentor", "Compass Mentor", "compass-mentor@example.test"))["user"].(map[string]any)
+	mentorID := int64(mentor["id"].(float64))
+
+	profile := map[string]any{
+		"degree": "bachelor", "field": "computer-science", "destinations": []string{"china"},
+		"gpaPercent": 88, "ielts": 6.5, "toefl": nil, "hsk": nil, "sat": nil,
+		"annualBudgetUsd": 30000, "intakeYear": 2027, "priorities": "Стипендия",
+	}
+	analysis := map[string]any{
+		"mode": "rules", "model": nil, "generatedAt": time.Now().UTC().Format(time.RFC3339),
+		"catalogVersion": "test", "summary": "Сбалансированная стратегия", "notice": "Сохранено",
+		"programs": []any{}, "scenarios": []any{}, "parentReport": "Отчёт",
+		"questionsForExpert": []string{"Проверить дедлайны"},
+	}
+	api.request(studentClient, http.MethodPost, "/api/v1/compass/analysis", map[string]any{
+		"profile": profile, "analysis": analysis,
+	}, http.StatusCreated)
+
+	own := api.request(studentClient, http.MethodGet, "/api/v1/compass/analysis", nil, http.StatusOK)
+	snapshot := own["snapshot"].(map[string]any)
+	if snapshot["student_id"].(float64) != float64(studentID) {
+		t.Fatalf("saved Compass analysis belongs to wrong student: %v", snapshot)
+	}
+	if snapshot["analysis"].(map[string]any)["summary"] != "Сбалансированная стратегия" {
+		t.Fatalf("saved Compass analysis was not returned: %v", snapshot)
+	}
+
+	api.request(mentorClient, http.MethodGet, "/api/v1/students/"+strconv.FormatInt(studentID, 10)+"/compass", nil, http.StatusForbidden)
+	api.request(api.admin, http.MethodPost, "/api/v1/admin/assignments", map[string]any{
+		"mentor_id": mentorID, "student_id": studentID,
+	}, http.StatusNoContent)
+	mentorView := api.request(mentorClient, http.MethodGet, "/api/v1/students/"+strconv.FormatInt(studentID, 10)+"/compass", nil, http.StatusOK)
+	if mentorView["snapshot"].(map[string]any)["profile"].(map[string]any)["priorities"] != "Стипендия" {
+		t.Fatalf("mentor did not receive stored Compass profile: %v", mentorView)
+	}
+}
