@@ -49,4 +49,11 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 cd "${project_root}"
+
+# GitHub preserves the scripts as plain text in some checkouts. Re-enter shell
+# scripts explicitly so the build works without relying on an executable bit.
+if [[ "${1:-}" == *.sh ]]; then
+  exec bash "$@"
+fi
+
 exec "$@"
