@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Server) handleCreateConsultation(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.consultationLimiter) {
 		return
 	}
 	var input Consultation
@@ -69,7 +69,7 @@ func (s *Server) handleRecordAnnualSubscription(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) handleCreatePublicConversation(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.publicChatWriteLimiter) {
 		return
 	}
 	var input struct {
@@ -89,7 +89,7 @@ func (s *Server) handleCreatePublicConversation(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) handleGetPublicConversation(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.publicChatReadLimiter) {
 		return
 	}
 	id, ok := pathID(w, r)
@@ -105,7 +105,7 @@ func (s *Server) handleGetPublicConversation(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleAddPublicMessage(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.publicChatWriteLimiter) {
 		return
 	}
 	id, ok := pathID(w, r)
@@ -128,7 +128,7 @@ func (s *Server) handleAddPublicMessage(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleGetInvitation(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.invitationLimiter) {
 		return
 	}
 	item, err := s.store.InvitationByToken(r.Context(), r.PathValue("token"))
@@ -140,7 +140,7 @@ func (s *Server) handleGetInvitation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.invitationLimiter) {
 		return
 	}
 	user, session, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"), s.cfg.SessionTTL)
@@ -153,7 +153,7 @@ func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
-	if !s.allowPublic(w, r) {
+	if !allowRateLimit(w, r, s.adminLoginLimiter) {
 		return
 	}
 	var input struct {
