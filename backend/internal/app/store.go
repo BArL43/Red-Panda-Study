@@ -147,6 +147,20 @@ func (s *Store) migrate(ctx context.Context) error {
 			body TEXT NOT NULL,
 			created_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS compass_profiles (
+			student_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			profile_json TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE IF NOT EXISTS compass_analyses (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			mode TEXT NOT NULL CHECK(mode IN ('ai','rules')),
+			model TEXT,
+			analysis_json TEXT NOT NULL,
+			generated_at TEXT NOT NULL,
+			created_at TEXT NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS audit_log (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			actor_user_id INTEGER REFERENCES users(id),
@@ -163,6 +177,7 @@ func (s *Store) migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id, status)`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_compass_analyses_student ON compass_analyses(student_id, generated_at DESC, id DESC)`,
 		// Repair any legacy duplicate assignments before enforcing the business
 		// rule at database level: one active mentor per student.
 		`DELETE FROM mentor_assignments
