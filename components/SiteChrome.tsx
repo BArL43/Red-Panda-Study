@@ -59,8 +59,14 @@ function SupportChat() {
     if (!conversationID || !visitorToken) return;
     try {
       const response = await fetch(`/api/v1/chat/conversations/${conversationID}?token=${encodeURIComponent(visitorToken)}`);
-      if (!response.ok) return;
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(response.status === 429
+          ? "Чат временно обновляется реже из-за высокой нагрузки. Сообщения не потеряны."
+          : payload.error || "Не удалось обновить чат. Повторим попытку автоматически.");
+        return;
+      }
+      setError("");
       setMessages(payload.messages ?? []);
     } catch {
       // Polling resumes automatically when the connection returns.
