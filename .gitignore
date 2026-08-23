@@ -45,4 +45,5 @@ next-env.d.ts
 /backend/data/
 /backend/redpanda.db*
 /backend/server
+/deploy/backups/
 *.zip
