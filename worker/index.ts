@@ -11,13 +11,11 @@ import { universityPrograms } from "../lib/university-programs";
 const DEFAULT_API_ORIGIN = "http://api:8788";
 const COMPASS_DAILY_LIMIT = 5;
 const COMPASS_COOLDOWN_MS = 60_000;
-const COMPASS_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
 const UPSTREAM_TIMEOUT_MS = 25_000;
 const VIBE_PROBE_TIMEOUT_MS = 12_000;
 
 type CompassUsage = { day: string; count: number; lastRequestAt: number };
 const compassUsage = new Map<number, CompassUsage>();
-const compassCache = new Map<string, { expiresAt: number; analysis: unknown }>();
 
 interface Env {
   ASSETS: Fetcher;
@@ -157,15 +155,42 @@ async function probeCompassProvider(env: Env): Promise<CompassProviderStatus> {
 }
 
 function apiOrigin(env?: Env) {
-  // Cloudflare supplies bindings as `env`; the Node/Vinext server on Render
-  // exposes them through process.env. Vinext may still pass an empty env object,
-  // so resolve each value independently instead of treating env as authoritative.
+  // The runtime may expose bindings as `env` or through process.env. Resolve
+  // each value independently so the same build works on the VPS and in local dev.
   const publicURL = runtimeValue(env, "GO_API_URL");
   const privateHost = runtimeValue(env, "GO_API_HOSTPORT");
-  // An explicitly configured public URL is authoritative. GO_API_HOSTPORT may
-  // remain as a stale Blueprint service reference after manual Render setup.
+  // An explicitly configured URL is authoritative; the container service name
+  // is the production fallback for the self-hosted Docker network.
   const configured = publicURL || (privateHost ? `http://${privateHost}` : undefined);
   return (configured || DEFAULT_API_ORIGIN).replace(/\/$/, "");
+}
+
+
+async function saveCompassResponse(
+  request: Request,
+  env: Env,
+  profile: unknown,
+  analysis: unknown,
+  extra: Record<string, unknown> = {},
+): Promise<Response> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  const cookie = request.headers.get("Cookie");
+  if (cookie) headers.set("Cookie", cookie);
+  try {
+    const response = await fetch(new Request(new URL("/api/v1/compass/analysis", apiOrigin(env)), {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ profile, analysis }),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    }));
+    if (!response.ok) {
+      console.error("Compass persistence failed", response.status);
+      return json({ error: "Не удалось сохранить анализ Compass. Повторите запрос." }, 502);
+    }
+  } catch {
+    return json({ error: "Не удалось сохранить анализ Compass. Повторите запрос." }, 502);
+  }
+  return json({ analysis, ...extra });
 }
 
 async function portalUser(request: Request, env: Env) {
@@ -264,17 +289,8 @@ async function handleCompass(request: Request, env: Env) {
     const base = buildRuleAnalysis(profile);
     const apiKey = runtimeValue(env, "VIBE_API_KEY");
     if (!apiKey) {
-      return json({ analysis: { ...base, notice: providerMessages.not_configured }, aiStatus: "not_configured" });
+      return saveCompassResponse(request, env, profile, { ...base, notice: providerMessages.not_configured }, { aiStatus: "not_configured" });
     }
-    const profileHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(profile)))
-      .then((digest) => Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join(""));
-    const cacheKey = `${user.id}:${profileHash}`;
-    const cached = compassCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return json({ analysis: cached.analysis, cached: true });
-    }
-    if (cached) compassCache.delete(cacheKey);
-
     const now = Date.now();
     const day = new Date(now).toISOString().slice(0, 10);
     const currentUsage = compassUsage.get(user.id);
@@ -282,13 +298,13 @@ async function handleCompass(request: Request, env: Env) {
       ? currentUsage
       : { day, count: 0, lastRequestAt: 0 };
     if (now - usage.lastRequestAt < COMPASS_COOLDOWN_MS) {
-      return json({
-        analysis: { ...base, notice: "Правиловый расчёт готов. Новое AI-пояснение можно запросить через минуту." },
+      return saveCompassResponse(request, env, profile, {
+        ...base, notice: "Правиловый расчёт готов. Новое AI-пояснение можно запросить через минуту.",
       });
     }
     if (usage.count >= COMPASS_DAILY_LIMIT) {
-      return json({
-        analysis: { ...base, notice: "Правиловый расчёт готов. Дневной лимит AI-пояснений исчерпан; куратор по-прежнему видит результаты." },
+      return saveCompassResponse(request, env, profile, {
+        ...base, notice: "Правиловый расчёт готов. Дневной лимит AI-пояснений исчерпан; результат сохранён для наставника.",
       });
     }
     compassUsage.set(user.id, { day, count: usage.count + 1, lastRequestAt: now });
@@ -300,21 +316,17 @@ async function handleCompass(request: Request, env: Env) {
         model: runtimeValue(env, "VIBE_MODEL") || "gpt-5.6-sol",
         userId: user.id,
       });
-      compassCache.set(cacheKey, { expiresAt: now + COMPASS_CACHE_MS, analysis });
-      return json({ analysis });
+      return saveCompassResponse(request, env, profile, analysis);
     } catch (aiError) {
       const detail = aiError instanceof Error ? aiError.message : "unknown error";
       console.error("Compass AI enrichment failed", detail);
       compassUsage.set(user.id, usage);
       const statusMatch = detail.match(/VibeMarketolog\s+(\d{3})/);
       const reason = providerReason(statusMatch ? Number(statusMatch[1]) : 503, detail);
-      return json({
-        analysis: {
-          ...base,
-          notice: `Правиловый расчёт готов. ${providerMessages[reason]}`,
-        },
-        aiStatus: reason,
-      });
+      return saveCompassResponse(request, env, profile, {
+        ...base,
+        notice: `Правиловый расчёт готов. ${providerMessages[reason]}`,
+      }, { aiStatus: reason });
     }
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Проверьте данные анкеты" }, 400);
