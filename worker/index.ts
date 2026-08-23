@@ -8,7 +8,7 @@ import {
 } from "../lib/compass";
 import { universityPrograms } from "../lib/university-programs";
 
-const DEFAULT_API_ORIGIN = "https://red-panda-study-api.onrender.com";
+const DEFAULT_API_ORIGIN = "http://api:8788";
 const COMPASS_DAILY_LIMIT = 5;
 const COMPASS_COOLDOWN_MS = 60_000;
 const COMPASS_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -26,7 +26,7 @@ interface Env {
   GO_API_HOSTPORT?: string;
   VIBE_API_KEY?: string;
   VIBE_MODEL?: string;
-  RENDER_GIT_COMMIT?: string;
+  APP_GIT_COMMIT?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -58,7 +58,7 @@ function nodeEnvironment(): Partial<Env> | undefined {
     : undefined;
 }
 
-function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL" | "RENDER_GIT_COMMIT") {
+function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL" | "APP_GIT_COMMIT") {
   return env?.[key]?.trim() || nodeEnvironment()?.[key]?.trim();
 }
 
@@ -87,17 +87,17 @@ type CompassProviderStatus = {
 
 const providerMessages: Record<CompassProviderReason, string> = {
   ready: "AI подключён и готов к платному анализу.",
-  not_configured: "Ключ VIBE_API_KEY не задан в веб-сервисе Render.",
-  invalid_key: "VibeMarketolog отклонил API-ключ. Проверьте значение ключа в Render.",
+  not_configured: "AI-анализ временно недоступен. Базовый анализ продолжает работать.",
+  invalid_key: "AI-анализ временно недоступен. Базовый анализ продолжает работать.",
   insufficient_scope: "API-ключу не выдано право generate.",
   insufficient_balance: "На балансе VibeMarketolog недостаточно средств для анализа.",
   daily_limit: "В VibeMarketolog достигнут дневной лимит расходов.",
   rate_limited: "VibeMarketolog временно ограничил частоту запросов.",
-  ip_restricted: "IP-ограничения API-ключа не разрешают запросы из Render.",
+  ip_restricted: "AI-анализ временно недоступен. Базовый анализ продолжает работать.",
   email_unconfirmed: "В аккаунте VibeMarketolog требуется подтвердить email.",
   invalid_model: "Выбранная AI-модель недоступна для этого ключа.",
   provider_unavailable: "VibeMarketolog временно не принимает запросы.",
-  network_error: "Render не смог установить соединение с VibeMarketolog.",
+  network_error: "AI-анализ временно недоступен. Базовый анализ продолжает работать.",
 };
 
 function providerReason(status: number, detail: string): CompassProviderReason {
@@ -234,7 +234,7 @@ async function handleRuntimeHealth(request: Request, env: Env) {
   const compass = await probeCompassProvider(env);
   return json({
     status: backend.available && compass.available ? "ok" : "degraded",
-    frontend: { available: true, commit: runtimeValue(env, "RENDER_GIT_COMMIT") || "unknown" },
+    frontend: { available: true, commit: runtimeValue(env, "APP_GIT_COMMIT") || "unknown" },
     backend,
     compass: { available: compass.available },
     checkedAt: new Date().toISOString(),
@@ -372,7 +372,7 @@ const worker = {
         return json({ error: "Backend временно недоступен. Повторите запрос через минуту." }, 502);
       }
       const headers = new Headers(upstream.headers);
-      // The response crosses two Render/Cloudflare HTTP stacks. Recalculate
+      // The response crosses the application proxy boundary. Recalculate
       // framing headers so the browser never receives a nested or truncated
       // response, while preserving application headers such as Set-Cookie.
       headers.delete("content-length");
