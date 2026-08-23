@@ -1,0 +1,46 @@
+name: Self-hosted deployment checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - chore/self-hosted-vps-deploy
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  backend:
+    name: Go API tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.6"
+      - run: go test ./...
+
+  containers:
+    name: Container builds
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag red-panda-study-web:ci .
+      - run: docker build --tag red-panda-study-api:ci ./backend
