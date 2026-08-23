@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { api, ApiError } from "./api";
 import type {
   CompassAnalysis,
   CompassDestination,
@@ -116,8 +117,7 @@ type CompassProviderStatus = {
   message: string;
 };
 
-export function StudentCompass({ userId }: { userId: number }) {
-  const storageKey = `red-panda-compass:${userId}`;
+export function StudentCompass() {
   const [profile, setProfile] = useState<CompassProfile>(initialProfile);
   const [analysis, setAnalysis] = useState<CompassAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
@@ -151,19 +151,21 @@ export function StudentCompass({ userId }: { userId: number }) {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const saved = window.localStorage.getItem(storageKey);
-        if (!saved) return;
-        const value = JSON.parse(saved) as { profile?: CompassProfile; analysis?: CompassAnalysis };
-        if (value.profile) setProfile(value.profile);
-        if (value.analysis) setAnalysis(value.analysis);
-      } catch {
-        window.localStorage.removeItem(storageKey);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [storageKey]);
+    const controller = new AbortController();
+    void api<{ snapshot: { profile: CompassProfile; analysis: CompassAnalysis } }>("/compass/analysis", {
+      signal: controller.signal,
+    })
+      .then(({ snapshot }) => {
+        setProfile(snapshot.profile);
+        setAnalysis(snapshot.analysis);
+      })
+      .catch((loadError) => {
+        if (!(loadError instanceof ApiError && loadError.status === 404)) {
+          setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить сохранённый анализ");
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   const categoryGroups = useMemo(() => {
     if (!analysis) return [];
@@ -207,7 +209,6 @@ export function StudentCompass({ userId }: { userId: number }) {
       if (!response.ok) throw new Error(payload.error || "Compass не смог собрать стратегию");
       const result = payload.analysis as CompassAnalysis;
       setAnalysis(result);
-      window.localStorage.setItem(storageKey, JSON.stringify({ profile, analysis: result }));
       window.setTimeout(() => document.getElementById("compass-result")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") {
