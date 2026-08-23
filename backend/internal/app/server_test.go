@@ -367,3 +367,32 @@ func TestCompassAnalysisPersistsAndMentorCanReadAssignedStudent(t *testing.T) {
 		t.Fatalf("mentor did not receive stored Compass profile: %v", mentorView)
 	}
 }
+
+
+func TestPublicRateLimitBudgetsAreSeparated(t *testing.T) {
+	server := &Server{
+		consultationLimiter:    newIPLimiter(10, time.Hour),
+		publicChatReadLimiter:  newIPLimiter(180, time.Hour),
+		publicChatWriteLimiter: newIPLimiter(30, time.Hour),
+		adminLoginLimiter:      newIPLimiter(10, time.Hour),
+	}
+	for range 180 {
+		if !server.publicChatReadLimiter.Allow("198.51.100.7") {
+			t.Fatal("chat polling was limited before its dedicated budget was exhausted")
+		}
+	}
+	if server.publicChatReadLimiter.Allow("198.51.100.7") {
+		t.Fatal("chat polling limit was not enforced")
+	}
+	for range 10 {
+		if !server.adminLoginLimiter.Allow("198.51.100.7") {
+			t.Fatal("admin login must have an independent budget")
+		}
+	}
+	if server.adminLoginLimiter.Allow("198.51.100.7") {
+		t.Fatal("admin login limit was not enforced")
+	}
+	if !server.consultationLimiter.Allow("198.51.100.7") {
+		t.Fatal("lead form must not be blocked by public chat polling")
+	}
+}
