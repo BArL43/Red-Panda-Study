@@ -1,6 +1,9 @@
 package app
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Config struct {
 	Addr             string
@@ -109,4 +112,16 @@ type MentorStudent struct {
 	User      User           `json:"user"`
 	Profile   StudentProfile `json:"profile"`
 	OpenTasks int            `json:"open_tasks"`
+}
+
+
+type CompassSnapshot struct {
+	ID          int64           `json:"id"`
+	StudentID   int64           `json:"student_id"`
+	Profile     json.RawMessage `json:"profile"`
+	Analysis    json.RawMessage `json:"analysis"`
+	Mode        string          `json:"mode"`
+	Model       *string         `json:"model,omitempty"`
+	GeneratedAt time.Time       `json:"generated_at"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
