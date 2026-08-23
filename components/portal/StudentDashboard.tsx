@@ -130,7 +130,7 @@ export function StudentDashboard() {
 
       {tab === "universities" && <StudentUniversityLibrary onOpenChat={() => setTab("chat")} />}
 
-      {tab === "compass" && <StudentCompass userId={user.id} />}
+      {tab === "compass" && <StudentCompass />}
 
       {tab === "tasks" && (
         <section className="portal-card">
