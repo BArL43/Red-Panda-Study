@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -367,6 +368,56 @@ func (s *Server) handleStudentDashboard(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"dashboard": item})
+}
+
+func (s *Server) handleSaveCompassAnalysis(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requireUser(w, r, "student")
+	if !ok {
+		return
+	}
+	var input struct {
+		Profile  json.RawMessage `json:"profile"`
+		Analysis json.RawMessage `json:"analysis"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	item, err := s.store.SaveCompassAnalysis(r.Context(), user.ID, input.Profile, input.Analysis)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"snapshot": item})
+}
+
+func (s *Server) handleGetOwnCompassAnalysis(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requireUser(w, r, "student")
+	if !ok {
+		return
+	}
+	item, err := s.store.CompassForStudent(r.Context(), user, user.ID)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"snapshot": item})
+}
+
+func (s *Server) handleGetStudentCompassAnalysis(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requireUser(w, r, "admin", "student", "mentor")
+	if !ok {
+		return
+	}
+	studentID, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	item, err := s.store.CompassForStudent(r.Context(), user, studentID)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"snapshot": item})
 }
 
 func (s *Server) handleUpdateStudentProfile(w http.ResponseWriter, r *http.Request) {
