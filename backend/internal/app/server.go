@@ -16,13 +16,24 @@ import (
 )
 
 type Server struct {
-	cfg     Config
-	store   *Store
-	limiter *ipLimiter
+	cfg                       Config
+	store                     *Store
+	consultationLimiter       *ipLimiter
+	publicChatReadLimiter     *ipLimiter
+	publicChatWriteLimiter    *ipLimiter
+	invitationLimiter         *ipLimiter
+	adminLoginLimiter         *ipLimiter
 }
 
 func NewServer(cfg Config, store *Store) http.Handler {
-	server := &Server{cfg: cfg, store: store, limiter: newIPLimiter(80, 10*time.Minute)}
+	server := &Server{
+		cfg: cfg, store: store,
+		consultationLimiter:    newIPLimiter(10, 10*time.Minute),
+		publicChatReadLimiter:  newIPLimiter(180, 10*time.Minute),
+		publicChatWriteLimiter: newIPLimiter(30, 10*time.Minute),
+		invitationLimiter:      newIPLimiter(20, 10*time.Minute),
+		adminLoginLimiter:      newIPLimiter(10, 10*time.Minute),
+	}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", server.handleHealth)
@@ -189,7 +200,7 @@ func (s *Server) sessionSameSite() http.SameSite {
 	return http.SameSiteLaxMode
 }
 
-func (s *Server) allowPublic(w http.ResponseWriter, r *http.Request) bool {
+func allowRateLimit(w http.ResponseWriter, r *http.Request, limiter *ipLimiter) bool {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
@@ -197,7 +208,7 @@ func (s *Server) allowPublic(w http.ResponseWriter, r *http.Request) bool {
 	if forwarded := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); forwarded != "" {
 		host = forwarded
 	}
-	if !s.limiter.Allow(host) {
+	if !limiter.Allow(host) {
 		w.Header().Set("Retry-After", "600")
 		writeError(w, http.StatusTooManyRequests, "Слишком много запросов. Попробуйте позже")
 		return false
