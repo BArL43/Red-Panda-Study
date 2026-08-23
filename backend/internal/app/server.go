@@ -48,6 +48,9 @@ func NewServer(cfg Config, store *Store) http.Handler {
 	mux.HandleFunc("POST /api/v1/conversations/{id}/messages", server.handleAddAuthenticatedMessage)
 
 	mux.HandleFunc("GET /api/v1/student/dashboard", server.handleStudentDashboard)
+	mux.HandleFunc("GET /api/v1/compass/analysis", server.handleGetOwnCompassAnalysis)
+	mux.HandleFunc("POST /api/v1/compass/analysis", server.handleSaveCompassAnalysis)
+	mux.HandleFunc("GET /api/v1/students/{id}/compass", server.handleGetStudentCompassAnalysis)
 	mux.HandleFunc("PATCH /api/v1/students/{id}/profile", server.handleUpdateStudentProfile)
 	mux.HandleFunc("GET /api/v1/mentor/students", server.handleMentorStudents)
 	mux.HandleFunc("POST /api/v1/tasks", server.handleCreateTask)
