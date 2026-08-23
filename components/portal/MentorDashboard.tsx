@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "./api";
+import { api, ApiError, formatDate } from "./api";
 import { ConversationPanel } from "./ConversationPanel";
 import { LoadingPortal, PortalError, PortalShell } from "./PortalShell";
 import { usePortalAuth } from "./usePortalAuth";
@@ -12,6 +12,10 @@ type Student = {
   open_tasks: number;
 };
 type Conversation = { id: number; kind: string; subject: string; display_name: string; updated_at: string; user_id?: number };
+type CompassSnapshot = {
+  generated_at: string;
+  analysis: { summary: string; notice: string; mode: "ai" | "rules"; programs: unknown[] };
+};
 
 export function MentorDashboard() {
   const { user, checking, authError, retry: retryAuth } = usePortalAuth("mentor");
@@ -23,6 +27,8 @@ export function MentorDashboard() {
   const [taskOpen, setTaskOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [compass, setCompass] = useState<CompassSnapshot | null>(null);
+  const [compassLoading, setCompassLoading] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -48,6 +54,27 @@ export function MentorDashboard() {
   }, [user, load]);
 
   const active = useMemo(() => students.find((item) => item.user.id === selected), [students, selected]);
+
+  useEffect(() => {
+    if (!selected) {
+      setCompass(null);
+      return;
+    }
+    const controller = new AbortController();
+    setCompassLoading(true);
+    void api<{ snapshot: CompassSnapshot }>(`/students/${selected}/compass`, { signal: controller.signal })
+      .then(({ snapshot }) => setCompass(snapshot))
+      .catch((loadError) => {
+        if (!(loadError instanceof ApiError && loadError.status === 404) && !controller.signal.aborted) {
+          setError(loadError instanceof Error ? loadError.message : "Не удалось загрузить Compass");
+        }
+        setCompass(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCompassLoading(false);
+      });
+    return () => controller.abort();
+  }, [selected]);
 
   const createTask = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,6 +155,13 @@ export function MentorDashboard() {
                 <article><span>Открыто задач</span><strong>{active.open_tasks}</strong></article>
               </div>
               <div className="mentor-focus-actions"><button className="portal-button primary" onClick={() => setTaskOpen(true)}>Поставить задачу</button><button className="portal-button ghost" onClick={() => setTab("chat")}>Открыть диалог →</button></div>
+              <div className="mentor-standard">
+                <span>AI</span>
+                <div>
+                  <strong>{compassLoading ? "Загружаем Compass…" : compass ? "Compass доступен" : "Compass ещё не заполнен"}</strong>
+                  <p>{compass ? `${compass.analysis.summary} · ${compass.analysis.programs.length} программ · обновлён ${formatDate(compass.generated_at)}` : "После первой диагностики здесь появятся стратегия, риски и рекомендации для вашей работы."}</p>
+                </div>
+              </div>
               <div className="mentor-standard"><span>质量</span><div><strong>Проверка перед отправкой</strong><p>Документы проходят двойной контроль: наставник + координатор.</p></div></div>
             </div>
           )}
