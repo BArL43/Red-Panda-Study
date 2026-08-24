@@ -468,3 +468,28 @@ func TestPortalUsersCanSignInAfterSessionLoss(t *testing.T) {
 		"email": "returning-student@example.test", "password": "wrong-password",
 	}, http.StatusUnauthorized)
 }
+
+
+func TestConversationCanBeClosedAndReopensOnNewMessage(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+	visitor := api.client()
+	created := api.request(visitor, http.MethodPost, "/api/v1/chat/conversations", map[string]any{
+		"display_name": "Status guest", "subject": "Status",
+	}, http.StatusCreated)
+	id := int64(created["conversation"].(map[string]any)["id"].(float64))
+	token := created["visitor_token"].(string)
+
+	api.request(api.admin, http.MethodPatch, "/api/v1/conversations/"+strconv.FormatInt(id, 10), map[string]any{"status": "closed"}, http.StatusOK)
+	overview := api.request(api.admin, http.MethodGet, "/api/v1/admin/overview", nil, http.StatusOK)
+	if overview["counts"].(map[string]any)["open_chats"].(float64) != 0 {
+		t.Fatalf("closed conversation still counted as open: %v", overview)
+	}
+	api.request(visitor, http.MethodPost, "/api/v1/chat/conversations/"+strconv.FormatInt(id, 10)+"/messages", map[string]any{
+		"token": token, "body": "Есть ещё вопрос",
+	}, http.StatusCreated)
+	overview = api.request(api.admin, http.MethodGet, "/api/v1/admin/overview", nil, http.StatusOK)
+	if overview["counts"].(map[string]any)["open_chats"].(float64) != 1 {
+		t.Fatalf("new visitor message did not reopen conversation: %v", overview)
+	}
+}
