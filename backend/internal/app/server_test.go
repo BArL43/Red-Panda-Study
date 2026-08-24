@@ -493,3 +493,30 @@ func TestConversationCanBeClosedAndReopensOnNewMessage(t *testing.T) {
 		t.Fatalf("new visitor message did not reopen conversation: %v", overview)
 	}
 }
+
+
+func TestConversationUnreadIsPerUserAndClearsOnRead(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+	visitor := api.client()
+	created := api.request(visitor, http.MethodPost, "/api/v1/chat/conversations", map[string]any{
+		"display_name": "Unread guest", "subject": "Unread",
+	}, http.StatusCreated)
+	id := int64(created["conversation"].(map[string]any)["id"].(float64))
+	token := created["visitor_token"].(string)
+	api.request(visitor, http.MethodPost, "/api/v1/chat/conversations/"+strconv.FormatInt(id, 10)+"/messages", map[string]any{
+		"token": token, "body": "Пожалуйста, ответьте",
+	}, http.StatusCreated)
+
+	overview := api.request(api.admin, http.MethodGet, "/api/v1/admin/overview", nil, http.StatusOK)
+	conversations := overview["conversations"].([]any)
+	if conversations[0].(map[string]any)["unread"].(float64) != 1 {
+		t.Fatalf("new visitor message was not marked unread: %v", overview)
+	}
+	api.request(api.admin, http.MethodGet, "/api/v1/conversations/"+strconv.FormatInt(id, 10), nil, http.StatusOK)
+	overview = api.request(api.admin, http.MethodGet, "/api/v1/admin/overview", nil, http.StatusOK)
+	conversations = overview["conversations"].([]any)
+	if conversations[0].(map[string]any)["unread"].(float64) != 0 {
+		t.Fatalf("opening conversation did not clear admin unread count: %v", overview)
+	}
+}
