@@ -396,3 +396,43 @@ func TestPublicRateLimitBudgetsAreSeparated(t *testing.T) {
 		t.Fatal("lead form must not be blocked by public chat polling")
 	}
 }
+
+
+func TestChatCursorKeepsNewestMessagesAfterFiveHundred(t *testing.T) {
+	api := newTestAPI(t)
+	visitor := api.client()
+	created := api.request(visitor, http.MethodPost, "/api/v1/chat/conversations", map[string]any{
+		"display_name": "Cursor guest", "subject": "Long conversation",
+	}, http.StatusCreated)
+	id := int64(created["conversation"].(map[string]any)["id"].(float64))
+	token := created["visitor_token"].(string)
+
+	for index := 1; index <= 500; index++ {
+		if _, err := api.store.db.ExecContext(t.Context(), `
+			INSERT INTO messages(conversation_id, sender_type, sender_name, body, created_at)
+			VALUES(?, 'visitor', 'Cursor guest', ?, ?)`,
+			id, "message-"+strconv.Itoa(index), formatTime(time.Now().UTC())); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	thread := api.request(visitor, http.MethodGet, "/api/v1/chat/conversations/"+strconv.FormatInt(id, 10)+"?token="+url.QueryEscape(token), nil, http.StatusOK)
+	messages := thread["messages"].([]any)
+	if len(messages) != chatMessagePageSize {
+		t.Fatalf("got %d messages, want latest page of %d", len(messages), chatMessagePageSize)
+	}
+	last := messages[len(messages)-1].(map[string]any)
+	if last["body"] != "message-500" {
+		t.Fatalf("latest message was lost after 500 rows: %v", last)
+	}
+	lastID := int64(last["id"].(float64))
+	if int64(thread["next_after_id"].(float64)) != lastID {
+		t.Fatalf("next cursor does not match latest message: %v", thread)
+	}
+
+	delta := api.request(visitor, http.MethodGet, "/api/v1/chat/conversations/"+strconv.FormatInt(id, 10)+"?token="+url.QueryEscape(token)+"&after_id="+strconv.FormatInt(lastID-1, 10), nil, http.StatusOK)
+	deltaMessages := delta["messages"].([]any)
+	if len(deltaMessages) != 1 || deltaMessages[0].(map[string]any)["body"] != "message-500" {
+		t.Fatalf("cursor did not return the message after it: %v", delta)
+	}
+}
