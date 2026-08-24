@@ -520,3 +520,44 @@ func TestConversationUnreadIsPerUserAndClearsOnRead(t *testing.T) {
 		t.Fatalf("opening conversation did not clear admin unread count: %v", overview)
 	}
 }
+
+
+func TestStudentProgressIsCalculatedFromTasks(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+
+	studentClient := api.client()
+	student := api.accept(studentClient, api.invitation("student", "Progress Student", "progress@example.test"))["user"].(map[string]any)
+	studentID := int64(student["id"].(float64))
+
+	dashboard := api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	profile := dashboard["dashboard"].(map[string]any)["profile"].(map[string]any)
+	if profile["progress"].(float64) != 0 {
+		t.Fatalf("student without tasks must have 0 progress: %v", profile)
+	}
+
+	task := api.request(api.admin, http.MethodPost, "/api/v1/tasks", map[string]any{
+		"student_id": studentID, "title": "Подготовить эссе",
+	}, http.StatusCreated)["task"].(map[string]any)
+	taskID := int64(task["id"].(float64))
+
+	dashboard = api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	profile = dashboard["dashboard"].(map[string]any)["profile"].(map[string]any)
+	if profile["progress"].(float64) != 0 {
+		t.Fatalf("unfinished task must not increase progress: %v", profile)
+	}
+
+	api.request(studentClient, http.MethodPatch, "/api/v1/tasks/"+strconv.FormatInt(taskID, 10), map[string]any{"status": "done"}, http.StatusNoContent)
+	dashboard = api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	profile = dashboard["dashboard"].(map[string]any)["profile"].(map[string]any)
+	if profile["progress"].(float64) != 100 {
+		t.Fatalf("completed task must set progress to 100: %v", profile)
+	}
+
+	api.request(studentClient, http.MethodPatch, "/api/v1/tasks/"+strconv.FormatInt(taskID, 10), map[string]any{"status": "todo"}, http.StatusNoContent)
+	dashboard = api.request(studentClient, http.MethodGet, "/api/v1/student/dashboard", nil, http.StatusOK)
+	profile = dashboard["dashboard"].(map[string]any)["profile"].(map[string]any)
+	if profile["progress"].(float64) != 0 {
+		t.Fatalf("reopened task must lower progress: %v", profile)
+	}
+}
