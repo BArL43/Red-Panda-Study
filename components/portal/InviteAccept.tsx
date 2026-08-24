@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, session, SessionUser } from "./api";
 
@@ -13,8 +12,8 @@ type Invitation = {
 };
 
 export function InviteAccept() {
-  const params = useSearchParams();
-  const token = params.get("token") ?? "";
+  const [token, setToken] = useState("");
+  const [tokenReady, setTokenReady] = useState(false);
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -23,13 +22,25 @@ export function InviteAccept() {
   const [status, setStatus] = useState("");
 
   useEffect(() => {
+    const tokenFromFragment = new URLSearchParams(window.location.hash.slice(1)).get("token");
+    if (tokenFromFragment) {
+      setToken(tokenFromFragment);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    setTokenReady(true);
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
-    api<{ invitation: Invitation }>(`/invitations/${encodeURIComponent(token)}`)
+    api<{ invitation: Invitation }>("/invitations/preview", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    })
       .then((result) => setInvitation(result.invitation))
       .catch((loadError) => setError(loadError instanceof Error ? loadError.message : "Приглашение недоступно"));
   }, [token]);
 
-  const visibleError = !token ? "В ссылке нет токена приглашения" : error;
+  const visibleError = tokenReady && !token ? "В ссылке нет токена приглашения" : error;
   const destinationFor = (user: SessionUser) => `/${user.role}`;
 
   const verifySession = async (expectedRole: Invitation["role"]) => {
@@ -60,9 +71,9 @@ export function InviteAccept() {
     setError("");
     setStatus("Создаём аккаунт и защищённую сессию…");
     try {
-      await api<{ redirect: string }>(`/invitations/${encodeURIComponent(token)}/accept`, {
+      await api<{ redirect: string }>("/invitations/accept", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ token, password }),
       });
       setStatus("Проверяем доступ к кабинету…");
       const current = await verifySession(invitation.role);
