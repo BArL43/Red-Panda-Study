@@ -24,7 +24,6 @@ interface Env {
   GO_API_HOSTPORT?: string;
   VIBE_API_KEY?: string;
   VIBE_MODEL?: string;
-  APP_GIT_COMMIT?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -56,7 +55,7 @@ function nodeEnvironment(): Partial<Env> | undefined {
     : undefined;
 }
 
-function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL" | "APP_GIT_COMMIT") {
+function runtimeValue(env: Env | undefined, key: "GO_API_URL" | "GO_API_HOSTPORT" | "VIBE_API_KEY" | "VIBE_MODEL") {
   return env?.[key]?.trim() || nodeEnvironment()?.[key]?.trim();
 }
 
