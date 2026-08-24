@@ -153,6 +153,13 @@ func (s *Store) migrate(ctx context.Context) error {
 			body TEXT NOT NULL,
 			created_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS conversation_reads (
+			conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			last_read_message_id INTEGER NOT NULL DEFAULT 0,
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY (conversation_id, user_id)
+		)`,
 		`CREATE TABLE IF NOT EXISTS compass_profiles (
 			student_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
 			profile_json TEXT NOT NULL,
@@ -181,6 +188,7 @@ func (s *Store) migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_consultations_created ON consultations(created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_annual_subscriptions_status ON annual_subscriptions(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_conversation_reads_user ON conversation_reads(user_id, conversation_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_student ON tasks(student_id, status)`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated ON conversations(updated_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_compass_analyses_student ON compass_analyses(student_id, generated_at DESC, id DESC)`,
