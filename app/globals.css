@@ -6050,3 +6050,28 @@ body {
   .fast-track-note, .external-costs-note { grid-template-columns: 1fr; gap: 18px; padding: 25px 22px; }
   .pricing-notes { padding-block: 70px; }
 }
+
+
+/* Password setup on invitation activation. */
+.invite-activation label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--ink, #26312f);
+  font-size: 13px;
+  font-weight: 700;
+}
+.invite-activation input {
+  width: 100%;
+  border: 1px solid rgba(45, 72, 66, 0.22);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink, #26312f);
+  padding: 12px 14px;
+  font: inherit;
+}
+.invite-activation input:focus {
+  border-color: #d96c3f;
+  box-shadow: 0 0 0 3px rgba(217, 108, 63, 0.16);
+  outline: none;
+}
