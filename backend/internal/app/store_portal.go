@@ -11,7 +11,11 @@ func (s *Store) StudentDashboard(ctx context.Context, studentID int64) (StudentS
 	var result StudentSummary
 	err := s.db.QueryRowContext(ctx, `
 		SELECT u.id, u.role, u.name, u.email, u.status, u.created_at,
-		       p.user_id, p.country, p.level, p.intake, p.progress
+		       p.user_id, p.country, p.level, p.intake,
+		       COALESCE((
+			   SELECT CAST(ROUND(100.0 * SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) / COUNT(*)) AS INTEGER)
+			   FROM tasks t WHERE t.student_id = u.id
+		       ), 0)
 		FROM users u JOIN student_profiles p ON p.user_id = u.id
 		WHERE u.id = ? AND u.role = 'student'`, studentID).
 		Scan(&result.User.ID, &result.User.Role, &result.User.Name, &result.User.Email, &result.User.Status, timeScanner{target: &result.User.CreatedAt},
@@ -86,7 +90,11 @@ func (s *Store) TasksForStudent(ctx context.Context, studentID int64) ([]Task, e
 func (s *Store) MentorStudents(ctx context.Context, mentorID int64) ([]MentorStudent, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT u.id, u.role, u.name, u.email, u.status, u.created_at,
-		       p.user_id, p.country, p.level, p.intake, p.progress,
+		       p.user_id, p.country, p.level, p.intake,
+		       COALESCE((
+			   SELECT CAST(ROUND(100.0 * SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END) / COUNT(*)) AS INTEGER)
+			   FROM tasks t WHERE t.student_id = u.id
+		       ), 0),
 		       COALESCE((SELECT COUNT(*) FROM tasks t WHERE t.student_id = u.id AND t.status <> 'done'), 0)
 		FROM mentor_assignments ma
 		JOIN users u ON u.id = ma.student_id
