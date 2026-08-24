@@ -160,6 +160,22 @@ export function AdminDashboard() {
     }
   };
 
+  const revokeInvitation = async (id: number) => {
+    if (!window.confirm("Отозвать это неактивированное приглашение? Ссылка сразу перестанет работать.")) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/admin/invitations/${id}`, { method: "DELETE" });
+      setInviteLink("");
+      setCopyStatus("idle");
+      await load();
+    } catch (revokeError) {
+      setError(revokeError instanceof Error ? revokeError.message : "Не удалось отозвать приглашение");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const chooseAssignmentStudent = (value: string) => {
     setAssignmentStudent(value);
     setAssignmentNotice("");
@@ -355,6 +371,26 @@ export function AdminDashboard() {
               })}
               {!data.users.length && <div className="portal-empty compact"><strong>Создайте первое приглашение</strong></div>}
             </div>
+          </div>
+        </section>
+      )}
+
+
+      {tab === "team" && data && (
+        <section className="portal-card">
+          <div className="portal-card-head"><div><span className="portal-eyebrow">Контроль доступа</span><h2>Неактивированные приглашения</h2></div><span>{data.invitations.filter((item) => !item.used_at).length}</span></div>
+          <div className="portal-table">
+            <div className="portal-table-row header"><span>Получатель</span><span>Роль</span><span>Email</span><span>Действует до</span><span /></div>
+            {data.invitations.filter((item) => !item.used_at).map((item) => (
+              <div className="portal-table-row" key={item.id}>
+                <span><strong>{item.name}</strong><small>#{item.id}</small></span>
+                <span>{item.role === "student" ? "Ученик" : "Наставник"}</span>
+                <span>{item.email}</span>
+                <span>{formatDate(item.expires_at)}</span>
+                <button className="portal-button ghost compact" type="button" disabled={busy} onClick={() => void revokeInvitation(item.id)}>Отозвать</button>
+              </div>
+            ))}
+            {!data.invitations.some((item) => !item.used_at) && <div className="portal-empty compact"><strong>Активных приглашений нет</strong></div>}
           </div>
         </section>
       )}
