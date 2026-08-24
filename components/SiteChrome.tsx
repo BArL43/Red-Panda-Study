@@ -50,15 +50,26 @@ function SupportChat() {
     },
   ]);
   const endRef = useRef<HTMLDivElement>(null);
+  const lastMessageID = useRef(0);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
 
+  const appendMessages = useCallback((incoming: Message[]) => {
+    setMessages((current) => {
+      const known = new Set(current.map((message) => message.id).filter(Boolean));
+      return [...current, ...incoming.filter((message) => !message.id || !known.has(message.id))];
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!conversationID || !visitorToken) return;
+    const afterID = lastMessageID.current;
     try {
-      const response = await fetch(`/api/v1/chat/conversations/${conversationID}?token=${encodeURIComponent(visitorToken)}`);
+      const response = await fetch(
+        `/api/v1/chat/conversations/${conversationID}?token=${encodeURIComponent(visitorToken)}${afterID ? `&after_id=${afterID}` : ""}`,
+      );
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         setError(response.status === 429
@@ -66,12 +77,18 @@ function SupportChat() {
           : payload.error || "Не удалось обновить чат. Повторим попытку автоматически.");
         return;
       }
+      const incoming = (payload.messages ?? []) as Message[];
+      if (afterID === 0 && lastMessageID.current === 0) {
+        setMessages(incoming);
+      } else {
+        appendMessages(incoming);
+      }
+      lastMessageID.current = Number(payload.next_after_id) || lastMessageID.current;
       setError("");
-      setMessages(payload.messages ?? []);
     } catch {
       // Polling resumes automatically when the connection returns.
     }
-  }, [conversationID, visitorToken]);
+  }, [appendMessages, conversationID, visitorToken]);
 
   useEffect(() => {
     if (!open || !conversationID) return;
@@ -102,6 +119,11 @@ function SupportChat() {
         const payload = await created.json();
         id = payload.conversation.id;
         token = payload.visitor_token;
+        const initialMessages = (payload.messages ?? []) as Message[];
+        setMessages(initialMessages);
+        lastMessageID.current = Number(payload.next_after_id)
+          || initialMessages[initialMessages.length - 1]?.id
+          || 0;
         setConversationID(id);
         setVisitorToken(token);
         window.localStorage.setItem("rps_chat_id", String(id));
@@ -114,7 +136,8 @@ function SupportChat() {
       });
       if (!response.ok) throw new Error("Сообщение не отправлено");
       const payload = await response.json();
-      setMessages((current) => [...current, payload.message]);
+      appendMessages([payload.message]);
+      lastMessageID.current = Math.max(lastMessageID.current, Number(payload.message?.id) || 0);
       window.setTimeout(refresh, 250);
     } catch (sendError) {
       setDraft(clean);
