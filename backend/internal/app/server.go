@@ -44,8 +44,8 @@ func NewServer(cfg Config, store *Store) http.Handler {
 	mux.HandleFunc("POST /api/v1/chat/conversations", server.handleCreatePublicConversation)
 	mux.HandleFunc("GET /api/v1/chat/conversations/{id}", server.handleGetPublicConversation)
 	mux.HandleFunc("POST /api/v1/chat/conversations/{id}/messages", server.handleAddPublicMessage)
-	mux.HandleFunc("GET /api/v1/invitations/{token}", server.handleGetInvitation)
-	mux.HandleFunc("POST /api/v1/invitations/{token}/accept", server.handleAcceptInvitation)
+	mux.HandleFunc("POST /api/v1/invitations/preview", server.handlePreviewInvitation)
+	mux.HandleFunc("POST /api/v1/invitations/accept", server.handleAcceptInvitation)
 	mux.HandleFunc("POST /api/v1/admin/login", server.handleAdminLogin)
 	mux.HandleFunc("POST /api/v1/portal/login", server.handlePortalLogin)
 	mux.HandleFunc("POST /api/v1/logout", server.handleLogout)
@@ -53,6 +53,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/admin/overview", server.handleAdminOverview)
 	mux.HandleFunc("POST /api/v1/admin/invitations", server.handleCreateInvitation)
+	mux.HandleFunc("DELETE /api/v1/admin/invitations/{id}", server.handleRevokeInvitation)
 	mux.HandleFunc("POST /api/v1/admin/assignments", server.handleAssignMentor)
 	mux.HandleFunc("PATCH /api/v1/admin/consultations/{id}", server.handleUpdateConsultation)
 	mux.HandleFunc("POST /api/v1/admin/subscriptions", server.handleRecordAnnualSubscription)
