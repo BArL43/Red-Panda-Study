@@ -147,7 +147,18 @@ func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) 
 	if !allowRateLimit(w, r, s.invitationLimiter) {
 		return
 	}
-	user, session, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"), s.cfg.SessionTTL)
+	var input struct {
+		Password string `json:"password"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	input.Password = strings.TrimSpace(input.Password)
+	if len(input.Password) < 12 {
+		writeError(w, http.StatusBadRequest, "Пароль должен содержать не менее 12 символов")
+		return
+	}
+	user, session, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"), input.Password, s.cfg.SessionTTL)
 	if err != nil {
 		writeStoreError(w, err)
 		return
@@ -179,6 +190,36 @@ func (s *Server) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	s.setSessionCookie(w, session)
 	writeJSON(w, http.StatusOK, map[string]any{"user": user, "redirect": "/admin"})
+}
+
+func (s *Server) handlePortalLogin(w http.ResponseWriter, r *http.Request) {
+	if !allowRateLimit(w, r, s.portalLoginLimiter) {
+		return
+	}
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	user, err := s.store.AuthenticatePortal(r.Context(), input.Email, strings.TrimSpace(input.Password))
+	if err != nil {
+		if errors.Is(err, ErrForbidden) || errors.Is(err, ErrNotFound) {
+			writeError(w, http.StatusUnauthorized, "Неверный email или пароль")
+			return
+		}
+		writeStoreError(w, err)
+		return
+	}
+	session, err := s.store.CreateSession(r.Context(), user.ID, s.cfg.SessionTTL)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	s.setSessionCookie(w, session)
+	_ = s.store.audit(r.Context(), &user.ID, "portal.login", "user", user.ID, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"user": user, "redirect": "/" + user.Role})
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
