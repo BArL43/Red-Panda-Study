@@ -107,7 +107,11 @@ func (a *testAPI) invitation(role, name, email string) string {
 	if link.RawQuery != "" {
 		a.t.Fatalf("invitation token must not be in query string: %s", item["link"])
 	}
-	return link.Fragment[len("token="):]
+	fragment, err := url.ParseQuery(link.Fragment)
+	if err != nil || fragment.Get("token") == "" {
+		a.t.Fatalf("invitation token is missing from URL fragment: %s", item["link"])
+	}
+	return fragment.Get("token")
 }
 
 func (a *testAPI) accept(client *http.Client, token string) map[string]any {
@@ -578,10 +582,11 @@ func TestInvitationTokenUsesFragmentAndCanBeRevoked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if link.RawQuery != "" || !strings.HasPrefix(link.Fragment, "token=") {
+	fragment, err := url.ParseQuery(link.Fragment)
+	if err != nil || link.RawQuery != "" || fragment.Get("token") == "" {
 		t.Fatalf("invitation token must be restricted to URL fragment: %s", link)
 	}
-	token := strings.TrimPrefix(link.Fragment, "token=")
+	token := fragment.Get("token")
 
 	api.request(api.client(), http.MethodPost, "/api/v1/invitations/preview", map[string]any{"token": token}, http.StatusOK)
 	api.request(api.admin, http.MethodDelete, "/api/v1/admin/invitations/"+strconv.FormatInt(int64(item["id"].(float64)), 10), nil, http.StatusNoContent)
