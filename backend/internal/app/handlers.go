@@ -312,6 +312,22 @@ func (s *Server) handleCreateInvitation(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, map[string]any{"invitation": item})
 }
 
+func (s *Server) handleRevokeInvitation(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requireUser(w, r, "admin")
+	if !ok {
+		return
+	}
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	if err := s.store.RevokeInvitation(r.Context(), user.ID, id); err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleAssignMentor(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requireUser(w, r, "admin")
 	if !ok {
