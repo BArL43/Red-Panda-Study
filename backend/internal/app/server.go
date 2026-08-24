@@ -23,6 +23,7 @@ type Server struct {
 	publicChatWriteLimiter    *ipLimiter
 	invitationLimiter         *ipLimiter
 	adminLoginLimiter         *ipLimiter
+	portalLoginLimiter        *ipLimiter
 }
 
 func NewServer(cfg Config, store *Store) http.Handler {
@@ -33,6 +34,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 		publicChatWriteLimiter: newIPLimiter(30, 10*time.Minute),
 		invitationLimiter:      newIPLimiter(20, 10*time.Minute),
 		adminLoginLimiter:      newIPLimiter(10, 10*time.Minute),
+		portalLoginLimiter:     newIPLimiter(10, 10*time.Minute),
 	}
 	mux := http.NewServeMux()
 
@@ -45,6 +47,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 	mux.HandleFunc("GET /api/v1/invitations/{token}", server.handleGetInvitation)
 	mux.HandleFunc("POST /api/v1/invitations/{token}/accept", server.handleAcceptInvitation)
 	mux.HandleFunc("POST /api/v1/admin/login", server.handleAdminLogin)
+	mux.HandleFunc("POST /api/v1/portal/login", server.handlePortalLogin)
 	mux.HandleFunc("POST /api/v1/logout", server.handleLogout)
 	mux.HandleFunc("GET /api/v1/me", server.handleMe)
 
