@@ -104,11 +104,14 @@ func (a *testAPI) invitation(role, name, email string) string {
 	if err != nil {
 		a.t.Fatal(err)
 	}
-	return link.Query().Get("token")
+	if link.RawQuery != "" {
+		a.t.Fatalf("invitation token must not be in query string: %s", item["link"])
+	}
+	return link.Fragment[len("token="):]
 }
 
 func (a *testAPI) accept(client *http.Client, token string) map[string]any {
-	return a.request(client, http.MethodPost, "/api/v1/invitations/"+url.PathEscape(token)+"/accept", map[string]any{"password": "PortalPass!2026"}, http.StatusOK)
+	return a.request(client, http.MethodPost, "/api/v1/invitations/accept", map[string]any{"token": token, "password": "PortalPass!2026"}, http.StatusOK)
 }
 
 func TestCompleteServiceFlowAndRoleBoundaries(t *testing.T) {
@@ -560,4 +563,27 @@ func TestStudentProgressIsCalculatedFromTasks(t *testing.T) {
 	if profile["progress"].(float64) != 0 {
 		t.Fatalf("reopened task must lower progress: %v", profile)
 	}
+}
+
+
+func TestInvitationTokenUsesFragmentAndCanBeRevoked(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+
+	result := api.request(api.admin, http.MethodPost, "/api/v1/admin/invitations", map[string]any{
+		"role": "student", "name": "Revoked Student", "email": "revoked@example.test",
+	}, http.StatusCreated)
+	item := result["invitation"].(map[string]any)
+	link, err := url.Parse(item["link"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if link.RawQuery != "" || !strings.HasPrefix(link.Fragment, "token=") {
+		t.Fatalf("invitation token must be restricted to URL fragment: %s", link)
+	}
+	token := strings.TrimPrefix(link.Fragment, "token=")
+
+	api.request(api.client(), http.MethodPost, "/api/v1/invitations/preview", map[string]any{"token": token}, http.StatusOK)
+	api.request(api.admin, http.MethodDelete, "/api/v1/admin/invitations/"+strconv.FormatInt(int64(item["id"].(float64)), 10), nil, http.StatusNoContent)
+	api.request(api.client(), http.MethodPost, "/api/v1/invitations/preview", map[string]any{"token": token}, http.StatusNotFound)
 }
