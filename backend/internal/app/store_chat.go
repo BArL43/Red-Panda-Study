@@ -125,7 +125,7 @@ func (s *Store) insertMessage(ctx context.Context, conversationID int64, senderT
 		return Message{}, err
 	}
 	id, _ := result.LastInsertId()
-	if _, err := tx.ExecContext(ctx, `UPDATE conversations SET updated_at = ? WHERE id = ?`, formatTime(now), conversationID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE conversations SET status = 'open', updated_at = ? WHERE id = ?`, formatTime(now), conversationID); err != nil {
 		return Message{}, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -274,4 +274,27 @@ func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id, a
 	}
 	page, err := s.MessagesPage(ctx, id, afterID)
 	return item, page, err
+}
+
+
+func (s *Store) UpdateConversationStatus(ctx context.Context, user SessionUser, conversationID int64, status string) (Conversation, error) {
+	if status != "open" && status != "closed" {
+		return Conversation{}, ErrConflict
+	}
+	item, err := s.conversationByID(ctx, conversationID)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if user.Role == "mentor" && (item.AssignedTo == nil || *item.AssignedTo != user.ID) {
+		return Conversation{}, ErrForbidden
+	}
+	if user.Role != "admin" && user.Role != "mentor" {
+		return Conversation{}, ErrForbidden
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE conversations SET status = ?, updated_at = ? WHERE id = ?`,
+		status, formatTime(time.Now().UTC()), conversationID); err != nil {
+		return Conversation{}, err
+	}
+	_ = s.audit(ctx, &user.ID, "conversation.status_updated", "conversation", conversationID, map[string]any{"status": status})
+	return s.conversationByID(ctx, conversationID)
 }
