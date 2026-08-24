@@ -37,10 +37,23 @@ func (s *Store) CreateInvitation(ctx context.Context, actorID int64, role, name,
 		CreatedAt: now,
 	}
 	if publicBaseURL != "" {
-		item.Link = publicBaseURL + "/invite?token=" + url.QueryEscape(raw)
+		item.Link = publicBaseURL + "/invite#token=" + url.QueryEscape(raw)
 	}
 	_ = s.audit(ctx, &actorID, "invitation.created", "invitation", id, map[string]any{"role": role})
 	return item, raw, nil
+}
+
+func (s *Store) RevokeInvitation(ctx context.Context, actorID, invitationID int64) error {
+	result, err := s.db.ExecContext(ctx, `DELETE FROM invitations WHERE id = ? AND used_at IS NULL`, invitationID)
+	if err != nil {
+		return err
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return ErrNotFound
+	}
+	_ = s.audit(ctx, &actorID, "invitation.revoked", "invitation", invitationID, map[string]any{})
+	return nil
 }
 
 func (s *Store) InvitationByToken(ctx context.Context, raw string) (Invitation, error) {
