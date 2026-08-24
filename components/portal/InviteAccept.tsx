@@ -16,6 +16,8 @@ export function InviteAccept() {
   const params = useSearchParams();
   const token = params.get("token") ?? "";
   const [invitation, setInvitation] = useState<Invitation | null>(null);
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -28,7 +30,6 @@ export function InviteAccept() {
   }, [token]);
 
   const visibleError = !token ? "В ссылке нет токена приглашения" : error;
-
   const destinationFor = (user: SessionUser) => `/${user.role}`;
 
   const verifySession = async (expectedRole: Invitation["role"]) => {
@@ -40,21 +41,28 @@ export function InviteAccept() {
         }
         return current;
       }
-      if (attempt < 2) {
-        await new Promise((resolve) => window.setTimeout(resolve, 350));
-      }
+      if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 350));
     }
     return null;
   };
 
   const accept = async () => {
     if (!invitation || busy) return;
+    if (password.length < 12) {
+      setError("Придумайте пароль не короче 12 символов.");
+      return;
+    }
+    if (password !== confirmation) {
+      setError("Пароли не совпадают.");
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus("Создаём аккаунт и защищённую сессию…");
     try {
       await api<{ redirect: string }>(`/invitations/${encodeURIComponent(token)}/accept`, {
         method: "POST",
+        body: JSON.stringify({ password }),
       });
       setStatus("Проверяем доступ к кабинету…");
       const current = await verifySession(invitation.role);
@@ -84,15 +92,12 @@ export function InviteAccept() {
           <>
             <span className="portal-eyebrow">Персональное приглашение</span>
             <h1>{invitation.name},<br />ваш кабинет готов.</h1>
-            <p>Роль: <strong>{invitation.role === "student" ? "ученик" : "наставник"}</strong>. После активации ссылка погаснет, а вход сохранится на этом устройстве.</p>
+            <p>Роль: <strong>{invitation.role === "student" ? "ученик" : "наставник"}</strong>. Создайте пароль: он позволит войти снова с любого устройства.</p>
             <div className="invite-meta"><span>{invitation.email}</span><span>до {new Date(invitation.expires_at).toLocaleDateString("ru-RU")}</span></div>
             <div className="invite-activation" aria-live="polite">
-              {error && (
-                <div className="invite-activation-error" role="alert">
-                  <strong>Не удалось активировать аккаунт</strong>
-                  <span>{error}</span>
-                </div>
-              )}
+              <label><span>Пароль</span><input value={password} onChange={(event) => setPassword(event.target.value)} type="password" minLength={12} autoComplete="new-password" placeholder="Минимум 12 символов" /></label>
+              <label><span>Повторите пароль</span><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type="password" minLength={12} autoComplete="new-password" placeholder="Повторите пароль" /></label>
+              {error && <div className="invite-activation-error" role="alert"><strong>Не удалось активировать аккаунт</strong><span>{error}</span></div>}
               {status && <p className="invite-activation-status"><i />{status}</p>}
               <button className="portal-button primary wide" type="button" onClick={accept} disabled={busy}>
                 {busy ? "Активируем…" : error ? "Попробовать снова" : "Активировать аккаунт"} <span>→</span>
