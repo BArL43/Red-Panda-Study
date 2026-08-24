@@ -40,8 +40,8 @@ export function CohortCounter({ compact = false }: { compact?: boolean }) {
     return () => { active = false; };
   }, []);
 
-  const isReady = status === "ready" && availability;
-  const filled = isReady ? Math.min(availability.taken, availability.total) : 0;
+  const knownAvailability = status === "ready" ? availability : null;
+  const filled = knownAvailability ? Math.min(knownAvailability.taken, knownAvailability.total) : 0;
   const availabilityText = status === "loading" ? "Проверяем наличие мест…" : "Наличие мест уточняется у команды";
 
   return (
@@ -49,22 +49,22 @@ export function CohortCounter({ compact = false }: { compact?: boolean }) {
       <div className="cohort-copy">
         <span className="cohort-kicker"><i /> Первый набор RPS</span>
         <h2>
-          {isReady
-            ? availability.open
-              ? <>Только <em>{availability.total} учеников</em> в первый год</>
+          {knownAvailability
+            ? knownAvailability.open
+              ? <>Только <em>{knownAvailability.total} учеников</em> в первый год</>
               : <>Набор заполнен. <em>Открыт лист ожидания</em></>
             : <>Набор с <em>ограниченным числом мест</em></>}
         </h2>
         {!compact && <p>Мы ограничили набор, чтобы команда могла глубоко работать с каждым учеником. Место занимает только RPS Start, Admission или Select.</p>}
       </div>
       <div className="cohort-meter" aria-live="polite">
-        {isReady ? (
+        {knownAvailability ? (
           <>
-            <div className="cohort-number"><strong>{availability.available}</strong><span>мест<br />свободно</span></div>
+            <div className="cohort-number"><strong>{knownAvailability.available}</strong><span>мест<br />свободно</span></div>
             <div className="cohort-slots" aria-hidden="true">
-              {Array.from({ length: availability.total }, (_, index) => <i className={index < filled ? "taken" : ""} key={index} />)}
+              {Array.from({ length: knownAvailability.total }, (_, index) => <i className={index < filled ? "taken" : ""} key={index} />)}
             </div>
-            <small>{availability.taken} из {availability.total} мест занято</small>
+            <small>{knownAvailability.taken} из {knownAvailability.total} мест занято</small>
           </>
         ) : (
           <>
@@ -73,7 +73,7 @@ export function CohortCounter({ compact = false }: { compact?: boolean }) {
           </>
         )}
       </div>
-      <Link className="button button-primary" href="/consultation">{isReady && !availability.open ? "В лист ожидания" : "Обсудить участие"} <span>↗</span></Link>
+      <Link className="button button-primary" href="/consultation">{knownAvailability && !knownAvailability.open ? "В лист ожидания" : "Обсудить участие"} <span>↗</span></Link>
     </section>
   );
 }
