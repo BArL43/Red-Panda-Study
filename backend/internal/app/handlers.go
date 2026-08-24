@@ -132,11 +132,17 @@ func (s *Server) handleAddPublicMessage(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, map[string]any{"message": item})
 }
 
-func (s *Server) handleGetInvitation(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePreviewInvitation(w http.ResponseWriter, r *http.Request) {
 	if !allowRateLimit(w, r, s.invitationLimiter) {
 		return
 	}
-	item, err := s.store.InvitationByToken(r.Context(), r.PathValue("token"))
+	var input struct {
+		Token string `json:"token"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	item, err := s.store.InvitationByToken(r.Context(), input.Token)
 	if err != nil {
 		writeStoreError(w, err)
 		return
@@ -149,6 +155,7 @@ func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var input struct {
+		Token    string `json:"token"`
 		Password string `json:"password"`
 	}
 	if !decodeJSON(w, r, &input) {
@@ -159,7 +166,7 @@ func (s *Server) handleAcceptInvitation(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "Пароль должен содержать не менее 12 символов")
 		return
 	}
-	user, session, err := s.store.AcceptInvitation(r.Context(), r.PathValue("token"), input.Password, s.cfg.SessionTTL)
+	user, session, err := s.store.AcceptInvitation(r.Context(), input.Token, input.Password, s.cfg.SessionTTL)
 	if err != nil {
 		writeStoreError(w, err)
 		return
