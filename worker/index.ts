@@ -242,30 +242,6 @@ async function handleCompassStatus(request: Request, env: Env) {
   return json(await probeCompassProvider(env));
 }
 
-async function handleRuntimeHealth(request: Request, env: Env) {
-  if (request.method !== "GET") return json({ error: "Метод не поддерживается" }, 405);
-  const startedAt = Date.now();
-  let backend: { available: boolean; databaseReady?: boolean; commit?: string; latencyMs: number };
-  try {
-    const response = await fetch(new URL("/api/health", apiOrigin(env)), {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
-    const payload = await response.json().catch(() => ({})) as { database_ready?: boolean; commit?: string };
-    backend = { available: response.ok, databaseReady: payload.database_ready, commit: payload.commit, latencyMs: Date.now() - startedAt };
-  } catch {
-    backend = { available: false, latencyMs: Date.now() - startedAt };
-  }
-  const compass = await probeCompassProvider(env);
-  return json({
-    status: backend.available && compass.available ? "ok" : "degraded",
-    frontend: { available: true, commit: runtimeValue(env, "APP_GIT_COMMIT") || "unknown" },
-    backend,
-    compass: { available: compass.available },
-    checkedAt: new Date().toISOString(),
-  });
-}
-
 async function handleCompass(request: Request, env: Env) {
   if (request.method !== "POST") {
     return json({ error: "Метод не поддерживается" }, 405);
@@ -351,9 +327,6 @@ const worker = {
       return handleCompassStatus(request, env);
     }
 
-    if (url.pathname === "/api/runtime-health") {
-      return handleRuntimeHealth(request, env);
-    }
 
     if (url.pathname === "/api/compass/analyze") {
       return handleCompass(request, env);
