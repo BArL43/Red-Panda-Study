@@ -8,6 +8,7 @@ type Conversation = {
   kind: string;
   subject: string;
   status?: string;
+  unread?: number;
   display_name: string;
   updated_at: string;
 };
@@ -135,7 +136,7 @@ export function ConversationPanel({
         {conversations.map((conversation) => (
           <button className={effectiveSelected === conversation.id ? "active" : ""} type="button" key={conversation.id} onClick={() => setSelected(conversation.id)}>
             <span>{conversation.display_name.slice(0, 1).toUpperCase()}</span>
-            <div><strong>{conversation.display_name}</strong><small>{conversation.subject}</small></div>
+            <div><strong>{conversation.display_name}</strong><small>{conversation.subject}{conversation.unread ? ` · ${conversation.unread} новых` : ""}</small></div>
             <time>{formatDate(conversation.updated_at)}</time>
           </button>
         ))}
