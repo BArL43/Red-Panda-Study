@@ -249,9 +249,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const portal = ["/admin", "/student", "/mentor", "/invite", "/login", "/demo"].some((prefix) => pathname.startsWith(prefix));
   const [menu, setMenu] = useState(false);
-  const [transitioning, setTransitioning] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const transitionRef = useRef(false);
 
   useEffect(() => {
     const update = () => {
@@ -265,48 +263,6 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, []);
-
-  useEffect(() => {
-    const handleLink = (event: globalThis.MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) return;
-
-      const element = event.target as HTMLElement | null;
-      const anchor = element?.closest("a");
-      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
-
-      const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
-
-      const next = new URL(anchor.href, window.location.href);
-      if (next.origin !== window.location.origin || `${next.pathname}${next.search}` === `${window.location.pathname}${window.location.search}`) return;
-
-      event.preventDefault();
-      if (transitionRef.current) return;
-
-      transitionRef.current = true;
-      setTransitioning(true);
-      setMenu(false);
-
-      window.setTimeout(() => {
-        window.location.assign(`${next.pathname}${next.search}${next.hash}`);
-      }, 390);
-
-      window.setTimeout(() => {
-        transitionRef.current = false;
-        setTransitioning(false);
-      }, 2000);
-    };
-
-    document.addEventListener("click", handleLink, true);
-    return () => document.removeEventListener("click", handleLink, true);
   }, []);
 
   return (
@@ -359,17 +315,6 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       )}
       {!portal && <Footer />}
       {!portal && <SupportChat />}
-      <div className={`paw-transition ${transitioning ? "is-active" : ""}`} aria-hidden="true">
-        <div className="transition-wash" />
-        <div className="paw-trail">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <span className="paw-print" style={{ "--paw": index } as CSSProperties} key={index}>
-              <i /><b /><em /><strong />
-            </span>
-          ))}
-        </div>
-        <span className="transition-copy">Идём дальше</span>
-      </div>
     </>
   );
 }
