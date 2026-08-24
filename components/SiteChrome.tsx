@@ -247,7 +247,7 @@ function Footer() {
 
 export function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const portal = ["/admin", "/student", "/mentor", "/invite", "/demo"].some((prefix) => pathname.startsWith(prefix));
+  const portal = ["/admin", "/student", "/mentor", "/invite", "/login", "/demo"].some((prefix) => pathname.startsWith(prefix));
   const [menu, setMenu] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
