@@ -14,7 +14,7 @@ export function usePortalAuth(role: SessionUser["role"]) {
     try {
       const current = await session();
       if (!current) {
-        window.location.replace(role === "admin" ? "/admin/login" : "/");
+        window.location.replace(role === "admin" ? "/admin/login" : `/login?role=${role}`);
         return;
       }
       if (current.role !== role) {
