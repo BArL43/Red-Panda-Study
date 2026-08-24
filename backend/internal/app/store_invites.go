@@ -70,7 +70,11 @@ func (s *Store) InvitationByToken(ctx context.Context, raw string) (Invitation, 
 	return item, nil
 }
 
-func (s *Store) AcceptInvitation(ctx context.Context, raw string, sessionTTL time.Duration) (User, string, error) {
+func (s *Store) AcceptInvitation(ctx context.Context, raw, password string, sessionTTL time.Duration) (User, string, error) {
+	passwordHash, passwordSalt, err := hashPassword(password)
+	if err != nil {
+		return User{}, "", ErrConflict
+	}
 	now := time.Now().UTC()
 	sessionRaw, err := randomToken(32)
 	if err != nil {
@@ -136,6 +140,16 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string, sessionTTL tim
 				}
 			}
 		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO portal_credentials(user_id, password_hash, password_salt, updated_at)
+			VALUES(?, ?, ?, ?)
+			ON CONFLICT(user_id) DO UPDATE SET
+				password_hash = excluded.password_hash,
+				password_salt = excluded.password_salt,
+				updated_at = excluded.updated_at`,
+			existing.ID, passwordHash, passwordSalt, formatTime(now)); err != nil {
+			return User{}, "", err
+		}
 		result, err := tx.ExecContext(ctx, `UPDATE invitations SET used_at = ? WHERE id = ? AND used_at IS NULL`, formatTime(now), invitation.ID)
 		if err != nil {
 			return User{}, "", err
@@ -167,6 +181,12 @@ func (s *Store) AcceptInvitation(ctx context.Context, raw string, sessionTTL tim
 		return User{}, "", err
 	}
 	userID, _ := result.LastInsertId()
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO portal_credentials(user_id, password_hash, password_salt, updated_at)
+		VALUES(?, ?, ?, ?)`,
+		userID, passwordHash, passwordSalt, formatTime(now)); err != nil {
+		return User{}, "", err
+	}
 
 	if invitation.Role == "student" {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO student_profiles(user_id) VALUES(?)`, userID); err != nil {
