@@ -168,7 +168,7 @@ export function MentorDashboard() {
         </section>
       )}
 
-      {tab === "chat" && <section className="portal-card chat-card"><ConversationPanel conversations={conversations} /></section>}
+      {tab === "chat" && <section className="portal-card chat-card"><ConversationPanel conversations={conversations} allowStatusChanges onConversationStatusChange={load} /></section>}
 
       {taskOpen && active && (
         <div className="portal-modal-backdrop" onMouseDown={() => setTaskOpen(false)}>
