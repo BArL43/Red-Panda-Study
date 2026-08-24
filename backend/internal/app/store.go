@@ -114,7 +114,7 @@ func (s *Store) migrate(ctx context.Context) error {
 			country TEXT NOT NULL DEFAULT 'Не выбрано',
 			level TEXT NOT NULL DEFAULT 'Не выбрано',
 			intake TEXT NOT NULL DEFAULT 'Не выбрано',
-			progress INTEGER NOT NULL DEFAULT 12
+			progress INTEGER NOT NULL DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS mentor_assignments (
 			mentor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
