@@ -73,7 +73,13 @@ func (s *Store) PublicConversation(ctx context.Context, id int64, raw string, af
 		return Conversation{}, MessagePage{}, err
 	}
 	page, err := s.MessagesPage(ctx, id, afterID)
-	return item, page, err
+	if err != nil {
+		return Conversation{}, MessagePage{}, err
+	}
+	if err := s.markConversationRead(ctx, user.ID, id); err != nil {
+		return Conversation{}, MessagePage{}, err
+	}
+	return item, page, nil
 }
 
 func (s *Store) AddPublicMessage(ctx context.Context, id int64, raw, body string) (Message, error) {
@@ -220,9 +226,22 @@ func (s *Store) Messages(ctx context.Context, conversationID int64) ([]Message, 
 func (s *Store) ListConversations(ctx context.Context, user SessionUser) ([]Conversation, error) {
 	query := `
 		SELECT c.id, c.kind, c.subject, c.status, c.user_id, c.assigned_to, c.display_name, c.updated_at,
-			COALESCE((SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id AND m.sender_type IN ('visitor','student')), 0)
+			COALESCE((
+				SELECT COUNT(*)
+				FROM messages m
+				WHERE m.conversation_id = c.id
+				  AND m.id > COALESCE((
+					SELECT last_read_message_id
+					FROM conversation_reads
+					WHERE conversation_id = c.id AND user_id = ?
+				  ), 0)
+				  AND (
+					(? IN ('admin', 'mentor') AND m.sender_type IN ('visitor', 'student'))
+					OR (? = 'student' AND m.sender_type IN ('admin', 'mentor'))
+				  )
+			), 0)
 		FROM conversations c`
-	args := []any{}
+	args := []any{user.ID, user.Role, user.Role}
 	switch user.Role {
 	case "admin":
 	case "mentor":
@@ -256,6 +275,24 @@ func (s *Store) ListConversations(ctx context.Context, user SessionUser) ([]Conv
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (s *Store) markConversationRead(ctx context.Context, userID, conversationID int64) error {
+	var latestID int64
+	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(id), 0) FROM messages WHERE conversation_id = ?`, conversationID).Scan(&latestID); err != nil {
+		return err
+	}
+	if latestID == 0 {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO conversation_reads(conversation_id, user_id, last_read_message_id, updated_at)
+		VALUES(?, ?, ?, ?)
+		ON CONFLICT(conversation_id, user_id) DO UPDATE SET
+			last_read_message_id = MAX(conversation_reads.last_read_message_id, excluded.last_read_message_id),
+			updated_at = excluded.updated_at`,
+		conversationID, userID, latestID, formatTime(time.Now().UTC()))
+	return err
 }
 
 func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id, afterID int64) (Conversation, MessagePage, error) {
