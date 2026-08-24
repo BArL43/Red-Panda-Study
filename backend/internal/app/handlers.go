@@ -84,8 +84,8 @@ func (s *Server) handleCreatePublicConversation(w http.ResponseWriter, r *http.R
 		writeStoreError(w, err)
 		return
 	}
-	messages, _ := s.store.Messages(r.Context(), item.ID)
-	writeJSON(w, http.StatusCreated, map[string]any{"conversation": item, "visitor_token": token, "messages": messages})
+	page, _ := s.store.MessagesPage(r.Context(), item.ID, 0)
+	writeJSON(w, http.StatusCreated, map[string]any{"conversation": item, "visitor_token": token, "messages": page.Messages, "next_after_id": page.NextAfterID})
 }
 
 func (s *Server) handleGetPublicConversation(w http.ResponseWriter, r *http.Request) {
@@ -96,12 +96,16 @@ func (s *Server) handleGetPublicConversation(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	item, messages, err := s.store.PublicConversation(r.Context(), id, r.URL.Query().Get("token"))
+	afterID, ok := messageCursor(w, r)
+	if !ok {
+		return
+	}
+	item, page, err := s.store.PublicConversation(r.Context(), id, r.URL.Query().Get("token"), afterID)
 	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"conversation": item, "messages": messages})
+	writeJSON(w, http.StatusOK, map[string]any{"conversation": item, "messages": page.Messages, "next_after_id": page.NextAfterID})
 }
 
 func (s *Server) handleAddPublicMessage(w http.ResponseWriter, r *http.Request) {
@@ -326,12 +330,16 @@ func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	item, messages, err := s.store.ConversationForUser(r.Context(), user, id)
+	afterID, ok := messageCursor(w, r)
+	if !ok {
+		return
+	}
+	item, page, err := s.store.ConversationForUser(r.Context(), user, id, afterID)
 	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"conversation": item, "messages": messages})
+	writeJSON(w, http.StatusOK, map[string]any{"conversation": item, "messages": page.Messages, "next_after_id": page.NextAfterID})
 }
 
 func (s *Server) handleAddAuthenticatedMessage(w http.ResponseWriter, r *http.Request) {
@@ -504,6 +512,19 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func messageCursor(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	value := r.URL.Query().Get("after_id")
+	if value == "" {
+		return 0, true
+	}
+	cursor, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || cursor < 0 {
+		writeError(w, http.StatusBadRequest, "Некорректный курсор сообщений")
+		return 0, false
+	}
+	return cursor, true
 }
 
 func parsePositiveID(value string) (int64, bool) {
