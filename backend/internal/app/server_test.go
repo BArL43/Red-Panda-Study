@@ -108,7 +108,7 @@ func (a *testAPI) invitation(role, name, email string) string {
 }
 
 func (a *testAPI) accept(client *http.Client, token string) map[string]any {
-	return a.request(client, http.MethodPost, "/api/v1/invitations/"+url.PathEscape(token)+"/accept", map[string]any{}, http.StatusOK)
+	return a.request(client, http.MethodPost, "/api/v1/invitations/"+url.PathEscape(token)+"/accept", map[string]any{"password": "PortalPass!2026"}, http.StatusOK)
 }
 
 func TestCompleteServiceFlowAndRoleBoundaries(t *testing.T) {
@@ -130,7 +130,7 @@ func TestCompleteServiceFlowAndRoleBoundaries(t *testing.T) {
 	studentToken := api.invitation("student", "Мария Ли", "student@example.test")
 	student := api.accept(studentClient, studentToken)["user"].(map[string]any)
 	studentID := int64(student["id"].(float64))
-	api.request(api.client(), http.MethodPost, "/api/v1/invitations/"+url.PathEscape(studentToken)+"/accept", map[string]any{}, http.StatusGone)
+	api.request(api.client(), http.MethodPost, "/api/v1/invitations/"+url.PathEscape(studentToken)+"/accept", map[string]any{"password": "PortalPass!2026"}, http.StatusGone)
 
 	mentorClient := api.client()
 	mentorToken := api.invitation("mentor", "Антон Вэй", "mentor@example.test")
@@ -435,4 +435,36 @@ func TestChatCursorKeepsNewestMessagesAfterFiveHundred(t *testing.T) {
 	if len(deltaMessages) != 1 || deltaMessages[0].(map[string]any)["body"] != "message-500" {
 		t.Fatalf("cursor did not return the message after it: %v", delta)
 	}
+}
+
+
+func TestPortalUsersCanSignInAfterSessionLoss(t *testing.T) {
+	api := newTestAPI(t)
+	api.loginAdmin()
+
+	studentClient := api.client()
+	api.accept(studentClient, api.invitation("student", "Returning student", "returning-student@example.test"))
+	api.request(studentClient, http.MethodPost, "/api/v1/logout", map[string]any{}, http.StatusNoContent)
+	api.request(studentClient, http.MethodPost, "/api/v1/portal/login", map[string]any{
+		"email": "returning-student@example.test", "password": "PortalPass!2026",
+	}, http.StatusOK)
+	student := api.request(studentClient, http.MethodGet, "/api/v1/me", nil, http.StatusOK)["user"].(map[string]any)
+	if student["role"] != "student" {
+		t.Fatalf("student login returned wrong role: %v", student)
+	}
+
+	mentorClient := api.client()
+	api.accept(mentorClient, api.invitation("mentor", "Returning mentor", "returning-mentor@example.test"))
+	api.request(mentorClient, http.MethodPost, "/api/v1/logout", map[string]any{}, http.StatusNoContent)
+	api.request(mentorClient, http.MethodPost, "/api/v1/portal/login", map[string]any{
+		"email": "returning-mentor@example.test", "password": "PortalPass!2026",
+	}, http.StatusOK)
+	mentor := api.request(mentorClient, http.MethodGet, "/api/v1/me", nil, http.StatusOK)["user"].(map[string]any)
+	if mentor["role"] != "mentor" {
+		t.Fatalf("mentor login returned wrong role: %v", mentor)
+	}
+
+	api.request(api.client(), http.MethodPost, "/api/v1/portal/login", map[string]any{
+		"email": "returning-student@example.test", "password": "wrong-password",
+	}, http.StatusUnauthorized)
 }
