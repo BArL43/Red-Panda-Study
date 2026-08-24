@@ -7,7 +7,7 @@ type Conversation = {
   id: number;
   kind: string;
   subject: string;
-  status?: "open" | "closed";
+  status?: string;
   display_name: string;
   updated_at: string;
 };
