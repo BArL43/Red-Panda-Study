@@ -46,10 +46,10 @@ async function copyText(value: string) {
 
 function sameOriginInviteLink(rawLink: string) {
   const parsed = new URL(rawLink, window.location.origin);
-  const token = parsed.searchParams.get("token");
+  const token = new URLSearchParams(parsed.hash.slice(1)).get("token");
   if (!token) throw new Error("Сервер не вернул токен приглашения");
   const result = new URL("/invite", window.location.origin);
-  result.searchParams.set("token", token);
+  result.hash = new URLSearchParams({ token }).toString();
   return result.toString();
 }
 
