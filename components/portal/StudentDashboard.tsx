@@ -103,12 +103,10 @@ export function StudentDashboard() {
             <div className="portal-card">
               <div className="portal-card-head"><div><span className="portal-eyebrow">Ближайшие шаги</span><h2>Что сейчас в работе</h2></div><span>{done}/{data.tasks.length} готово</span></div>
               <div className="route-timeline">
-                {(data.tasks.length ? data.tasks : [
-                  { id: -1, title: "Диагностика профиля", description: "Координатор уточнит цели и академический опыт.", status: "in_progress" },
-                  { id: -2, title: "Шорт-лист университетов", description: "Соберём сбалансированный список программ.", status: "todo" },
-                ]).slice(0, 4).map((task, index) => (
+                {data.tasks.slice(0, 4).map((task, index) => (
                   <article className={task.status} key={task.id}><span>{task.status === "done" ? "✓" : index + 1}</span><div><strong>{task.title}</strong><p>{task.description}</p>{task.due_at && <small>до {formatDate(task.due_at)}</small>}</div></article>
                 ))}
+                {!data.tasks.length && <div className="portal-empty"><span>⌁</span><strong>Маршрут формируется</strong><p>Наставник добавит реальные шаги и сроки в ваш первый рабочий спринт.</p></div>}
               </div>
             </div>
             <aside className="portal-card mentor-card">
