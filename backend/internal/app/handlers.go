@@ -303,12 +303,11 @@ func (s *Server) handleCreateInvitation(w http.ResponseWriter, r *http.Request) 
 	if baseURL == "" {
 		baseURL = publicBaseURL(r)
 	}
-	item, token, err := s.store.CreateInvitation(r.Context(), user.ID, input.Role, input.Name, input.Email, s.cfg.InviteTTL, baseURL)
+	item, _, err := s.store.CreateInvitation(r.Context(), user.ID, input.Role, input.Name, input.Email, s.cfg.InviteTTL, baseURL)
 	if err != nil {
 		writeStoreError(w, err)
 		return
 	}
-	item.Link = baseURL + "/invite?token=" + token
 	writeJSON(w, http.StatusCreated, map[string]any{"invitation": item})
 }
 
