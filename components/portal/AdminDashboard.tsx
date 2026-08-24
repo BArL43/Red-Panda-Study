@@ -359,7 +359,7 @@ export function AdminDashboard() {
         </section>
       )}
 
-      {tab === "chat" && data && <section className="portal-card chat-card"><ConversationPanel key={selectedConversation ?? "all"} conversations={data.conversations} initialID={selectedConversation} /></section>}
+      {tab === "chat" && data && <section className="portal-card chat-card"><ConversationPanel key={selectedConversation ?? "all"} conversations={data.conversations} initialID={selectedConversation} allowStatusChanges onConversationStatusChange={load} /></section>}
 
       {inviteOpen && (
         <div className="portal-modal-backdrop" role="presentation" onMouseDown={() => setInviteOpen(false)}>
