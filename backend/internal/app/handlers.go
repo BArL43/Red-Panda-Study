@@ -384,6 +384,29 @@ func (s *Server) handleGetConversation(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"conversation": item, "messages": page.Messages, "next_after_id": page.NextAfterID})
 }
 
+func (s *Server) handleUpdateConversationStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.requireUser(w, r, "admin", "mentor")
+	if !ok {
+		return
+	}
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var input struct {
+		Status string `json:"status"`
+	}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	item, err := s.store.UpdateConversationStatus(r.Context(), user, id, input.Status)
+	if err != nil {
+		writeStoreError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"conversation": item})
+}
+
 func (s *Server) handleAddAuthenticatedMessage(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.requireUser(w, r, "admin", "student", "mentor")
 	if !ok {
