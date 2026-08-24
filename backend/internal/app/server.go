@@ -59,6 +59,7 @@ func NewServer(cfg Config, store *Store) http.Handler {
 
 	mux.HandleFunc("GET /api/v1/conversations", server.handleListConversations)
 	mux.HandleFunc("GET /api/v1/conversations/{id}", server.handleGetConversation)
+	mux.HandleFunc("PATCH /api/v1/conversations/{id}", server.handleUpdateConversationStatus)
 	mux.HandleFunc("POST /api/v1/conversations/{id}/messages", server.handleAddAuthenticatedMessage)
 
 	mux.HandleFunc("GET /api/v1/student/dashboard", server.handleStudentDashboard)
