@@ -64,16 +64,16 @@ func (s *Store) publicConversationAllowed(ctx context.Context, id int64, raw str
 	return nil
 }
 
-func (s *Store) PublicConversation(ctx context.Context, id int64, raw string) (Conversation, []Message, error) {
+func (s *Store) PublicConversation(ctx context.Context, id int64, raw string, afterID int64) (Conversation, MessagePage, error) {
 	if err := s.publicConversationAllowed(ctx, id, raw); err != nil {
-		return Conversation{}, nil, err
+		return Conversation{}, MessagePage{}, err
 	}
 	item, err := s.conversationByID(ctx, id)
 	if err != nil {
-		return Conversation{}, nil, err
+		return Conversation{}, MessagePage{}, err
 	}
-	messages, err := s.Messages(ctx, id)
-	return item, messages, err
+	page, err := s.MessagesPage(ctx, id, afterID)
+	return item, page, err
 }
 
 func (s *Store) AddPublicMessage(ctx context.Context, id int64, raw, body string) (Message, error) {
@@ -156,27 +156,65 @@ func (s *Store) conversationByID(ctx context.Context, id int64) (Conversation, e
 	return item, nil
 }
 
-func (s *Store) Messages(ctx context.Context, conversationID int64) ([]Message, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, conversation_id, sender_type, sender_user_id, sender_name, body, created_at
-		FROM messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 500`, conversationID)
+const chatMessagePageSize = 100
+
+// MessagesPage returns the most recent page for a new thread view, or only
+// messages after afterID for polling. A cursor prevents old messages from
+// permanently hiding newer messages once a conversation grows past 500 rows.
+func (s *Store) MessagesPage(ctx context.Context, conversationID, afterID int64) (MessagePage, error) {
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if afterID > 0 {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT id, conversation_id, sender_type, sender_user_id, sender_name, body, created_at
+			FROM messages
+			WHERE conversation_id = ? AND id > ?
+			ORDER BY id ASC
+			LIMIT ?`, conversationID, afterID, chatMessagePageSize)
+	} else {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT id, conversation_id, sender_type, sender_user_id, sender_name, body, created_at
+			FROM (
+				SELECT id, conversation_id, sender_type, sender_user_id, sender_name, body, created_at
+				FROM messages
+				WHERE conversation_id = ?
+				ORDER BY id DESC
+				LIMIT ?
+			)
+			ORDER BY id ASC`, conversationID, chatMessagePageSize)
+	}
 	if err != nil {
-		return nil, err
+		return MessagePage{}, err
 	}
 	defer rows.Close()
-	items := make([]Message, 0)
+
+	page := MessagePage{Messages: make([]Message, 0), NextAfterID: afterID}
 	for rows.Next() {
 		var item Message
 		var senderID sql.NullInt64
 		if err := rows.Scan(&item.ID, &item.ConversationID, &item.SenderType, &senderID, &item.SenderName, &item.Body, timeScanner{target: &item.CreatedAt}); err != nil {
-			return nil, err
+			return MessagePage{}, err
 		}
 		if senderID.Valid {
 			item.SenderUserID = &senderID.Int64
 		}
-		items = append(items, item)
+		page.Messages = append(page.Messages, item)
+		page.NextAfterID = item.ID
 	}
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return MessagePage{}, err
+	}
+	return page, nil
+}
+
+func (s *Store) Messages(ctx context.Context, conversationID int64) ([]Message, error) {
+	page, err := s.MessagesPage(ctx, conversationID, 0)
+	if err != nil {
+		return nil, err
+	}
+	return page.Messages, nil
 }
 
 func (s *Store) ListConversations(ctx context.Context, user SessionUser) ([]Conversation, error) {
@@ -220,20 +258,20 @@ func (s *Store) ListConversations(ctx context.Context, user SessionUser) ([]Conv
 	return items, rows.Err()
 }
 
-func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id int64) (Conversation, []Message, error) {
+func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id, afterID int64) (Conversation, MessagePage, error) {
 	item, err := s.conversationByID(ctx, id)
 	if err != nil {
-		return Conversation{}, nil, err
+		return Conversation{}, MessagePage{}, err
 	}
 	if user.Role == "student" && (item.UserID == nil || *item.UserID != user.ID) {
-		return Conversation{}, nil, ErrForbidden
+		return Conversation{}, MessagePage{}, ErrForbidden
 	}
 	if user.Role == "mentor" && (item.AssignedTo == nil || *item.AssignedTo != user.ID) {
-		return Conversation{}, nil, ErrForbidden
+		return Conversation{}, MessagePage{}, ErrForbidden
 	}
 	if user.Role != "admin" && user.Role != "mentor" && user.Role != "student" {
-		return Conversation{}, nil, ErrForbidden
+		return Conversation{}, MessagePage{}, ErrForbidden
 	}
-	messages, err := s.Messages(ctx, id)
-	return item, messages, err
+	page, err := s.MessagesPage(ctx, id, afterID)
+	return item, page, err
 }
