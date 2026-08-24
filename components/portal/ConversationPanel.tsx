@@ -7,6 +7,7 @@ type Conversation = {
   id: number;
   kind: string;
   subject: string;
+  status?: "open" | "closed";
   display_name: string;
   updated_at: string;
 };
@@ -22,14 +23,19 @@ type Message = {
 export function ConversationPanel({
   conversations,
   initialID,
+  allowStatusChanges = false,
+  onConversationStatusChange,
 }: {
   conversations: Conversation[];
   initialID?: number;
+  allowStatusChanges?: boolean;
+  onConversationStatusChange?: () => Promise<void> | void;
 }) {
   const [selected, setSelected] = useState(initialID ?? conversations[0]?.id ?? 0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
   const [error, setError] = useState("");
   const cursorRef = useRef(0);
   const selectionRef = useRef(0);
@@ -38,6 +44,7 @@ export function ConversationPanel({
     : initialID && conversations.some((item) => item.id === initialID)
       ? initialID
       : conversations[0]?.id ?? 0;
+  const activeConversation = conversations.find((item) => item.id === effectiveSelected);
 
   useEffect(() => {
     if (selectionRef.current === effectiveSelected) return;
@@ -62,11 +69,8 @@ export function ConversationPanel({
         `/conversations/${selectedID}${afterID ? `?after_id=${afterID}` : ""}`,
       );
       if (selectionRef.current !== selectedID) return;
-      if (afterID === 0 && cursorRef.current === 0) {
-        setMessages(result.messages);
-      } else {
-        appendMessages(result.messages);
-      }
+      if (afterID === 0 && cursorRef.current === 0) setMessages(result.messages);
+      else appendMessages(result.messages);
       cursorRef.current = Number(result.next_after_id) || cursorRef.current;
       setError("");
     } catch (loadError) {
@@ -95,12 +99,12 @@ export function ConversationPanel({
     setError("");
     try {
       const result = await api<{ message: Message }>(`/conversations/${effectiveSelected}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ body: draft }),
+        method: "POST", body: JSON.stringify({ body: draft }),
       });
       appendMessages([result.message]);
       cursorRef.current = Math.max(cursorRef.current, result.message.id);
       setDraft("");
+      await onConversationStatusChange?.();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Сообщение не отправлено");
     } finally {
@@ -108,9 +112,22 @@ export function ConversationPanel({
     }
   };
 
-  if (!conversations.length) {
-    return <div className="portal-empty"><span>◎</span><strong>Диалогов пока нет</strong><p>Новые обращения появятся здесь автоматически.</p></div>;
-  }
+  const changeStatus = async () => {
+    if (!activeConversation || statusBusy) return;
+    setStatusBusy(true);
+    setError("");
+    const status = activeConversation.status === "closed" ? "open" : "closed";
+    try {
+      await api(`/conversations/${activeConversation.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+      await onConversationStatusChange?.();
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : "Не удалось обновить статус диалога");
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  if (!conversations.length) return <div className="portal-empty"><span>◎</span><strong>Диалогов пока нет</strong><p>Новые обращения появятся здесь автоматически.</p></div>;
 
   return (
     <div className="portal-chat-grid">
@@ -118,33 +135,21 @@ export function ConversationPanel({
         {conversations.map((conversation) => (
           <button className={effectiveSelected === conversation.id ? "active" : ""} type="button" key={conversation.id} onClick={() => setSelected(conversation.id)}>
             <span>{conversation.display_name.slice(0, 1).toUpperCase()}</span>
-            <div>
-              <strong>{conversation.display_name}</strong>
-              <small>{conversation.subject}</small>
-            </div>
+            <div><strong>{conversation.display_name}</strong><small>{conversation.subject}</small></div>
             <time>{formatDate(conversation.updated_at)}</time>
           </button>
         ))}
       </div>
       <div className="portal-chat-thread">
         <div className="portal-thread-head">
-          <div><strong>{conversations.find((item) => item.id === effectiveSelected)?.display_name}</strong><small>Диалог защищён и хранится в истории проекта</small></div>
-          <span className="online-pill">На связи</span>
+          <div><strong>{activeConversation?.display_name}</strong><small>{activeConversation?.status === "closed" ? "Диалог закрыт до нового сообщения" : "Диалог защищён и хранится в истории проекта"}</small></div>
+          {allowStatusChanges ? <button className="portal-button ghost compact" type="button" onClick={changeStatus} disabled={statusBusy}>{statusBusy ? "…" : activeConversation?.status === "closed" ? "Переоткрыть" : "Закрыть диалог"}</button> : <span className="online-pill">На связи</span>}
         </div>
         <div className="portal-thread-body">
-          {messages.map((message) => (
-            <div className={`portal-message ${["visitor", "student"].includes(message.sender_type) ? "client" : "team"}`} key={message.id}>
-              <small>{message.sender_name}</small>
-              <p>{message.body}</p>
-              <time>{new Date(message.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</time>
-            </div>
-          ))}
+          {messages.map((message) => <div className={`portal-message ${["visitor", "student"].includes(message.sender_type) ? "client" : "team"}`} key={message.id}><small>{message.sender_name}</small><p>{message.body}</p><time>{new Date(message.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</time></div>)}
         </div>
         {error && <p className="portal-inline-error">{error}</p>}
-        <form className="portal-thread-form" onSubmit={submit}>
-          <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Напишите сообщение…" />
-          <button type="submit" disabled={busy}>{busy ? "…" : "Отправить →"}</button>
-        </form>
+        <form className="portal-thread-form" onSubmit={submit}><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Напишите сообщение…" /><button type="submit" disabled={busy}>{busy ? "…" : "Отправить →"}</button></form>
       </div>
     </div>
   );
