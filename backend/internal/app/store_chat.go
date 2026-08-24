@@ -73,13 +73,7 @@ func (s *Store) PublicConversation(ctx context.Context, id int64, raw string, af
 		return Conversation{}, MessagePage{}, err
 	}
 	page, err := s.MessagesPage(ctx, id, afterID)
-	if err != nil {
-		return Conversation{}, MessagePage{}, err
-	}
-	if err := s.markConversationRead(ctx, user.ID, id); err != nil {
-		return Conversation{}, MessagePage{}, err
-	}
-	return item, page, nil
+	return item, page, err
 }
 
 func (s *Store) AddPublicMessage(ctx context.Context, id int64, raw, body string) (Message, error) {
@@ -310,7 +304,13 @@ func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id, a
 		return Conversation{}, MessagePage{}, ErrForbidden
 	}
 	page, err := s.MessagesPage(ctx, id, afterID)
-	return item, page, err
+	if err != nil {
+		return Conversation{}, MessagePage{}, err
+	}
+	if err := s.markConversationRead(ctx, user.ID, id); err != nil {
+		return Conversation{}, MessagePage{}, err
+	}
+	return item, page, nil
 }
 
 
