@@ -137,7 +137,7 @@ func TestCompleteServiceFlowAndRoleBoundaries(t *testing.T) {
 	studentToken := api.invitation("student", "Мария Ли", "student@example.test")
 	student := api.accept(studentClient, studentToken)["user"].(map[string]any)
 	studentID := int64(student["id"].(float64))
-	api.request(api.client(), http.MethodPost, "/api/v1/invitations/"+url.PathEscape(studentToken)+"/accept", map[string]any{"password": "PortalPass!2026"}, http.StatusGone)
+	api.request(api.client(), http.MethodPost, "/api/v1/invitations/accept", map[string]any{"token": studentToken, "password": "PortalPass!2026"}, http.StatusGone)
 
 	mentorClient := api.client()
 	mentorToken := api.invitation("mentor", "Антон Вэй", "mentor@example.test")
