@@ -108,14 +108,7 @@ function ProgramCard({ program }: { program: CompassProgramResult }) {
   );
 }
 
-type CompassProviderStatus = {
-  configured: boolean;
-  available: boolean;
-  provider: string;
-  model: string;
-  reason: string;
-  message: string;
-};
+type CompassProviderStatus = { available: boolean };
 
 export function StudentCompass() {
   const [profile, setProfile] = useState<CompassProfile>(initialProfile);
@@ -139,14 +132,7 @@ export function StudentCompass() {
       .then((status) => {
         if (status) setProviderStatus(status);
       })
-      .catch(() => setProviderStatus({
-        configured: false,
-        available: false,
-        provider: "VibeMarketolog",
-        model: "не определена",
-        reason: "backend_unavailable",
-        message: "не удалось проверить подключение AI",
-      }));
+      .catch(() => setProviderStatus({ available: false }));
     return () => controller.abort();
   }, []);
 
@@ -241,9 +227,9 @@ export function StudentCompass() {
           <p>Правила проверят формальные требования, бюджет и экзамены. ИИ объяснит выбор, сравнит сценарии и подготовит понятный отчёт для родителей.</p>
           <span className={`compass-provider-state ${providerStatus?.available ? "ready" : providerStatus ? "fallback" : "checking"}`}>
             {providerStatus?.available
-              ? `AI подключён · ${providerStatus.model}`
+              ? "AI-анализ подключён"
               : providerStatus
-                ? `Базовый анализ доступен · ${providerStatus.message}`
+                ? "AI-анализ временно недоступен, базовый анализ работает"
                 : "Проверяем подключение AI…"}
           </span>
         </div>
@@ -334,7 +320,7 @@ export function StudentCompass() {
           <section className="portal-card compass-summary">
             <div>
               <span className={`compass-mode ${analysis.mode}`}>
-                <i /> {analysis.mode === "ai" ? `AI + rules · ${analysis.model}` : "Rules engine · AI ожидает ключ"}
+                <i /> {analysis.mode === "ai" ? "AI + rules" : "Базовый анализ"}
               </span>
               <h2>{analysis.summary}</h2>
               <p>{analysis.notice}</p>
