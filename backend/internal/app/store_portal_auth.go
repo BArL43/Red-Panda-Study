@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"time"
 )
 
 func (s *Store) AuthenticatePortal(ctx context.Context, email, password string) (User, error) {
