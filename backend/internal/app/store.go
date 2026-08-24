@@ -64,6 +64,12 @@ func (s *Store) migrate(ctx context.Context) error {
 			password_salt TEXT NOT NULL,
 			updated_at TEXT NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS portal_credentials (
+			user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			password_hash TEXT NOT NULL,
+			password_salt TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
 		`CREATE TABLE IF NOT EXISTS invitations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			token_hash TEXT NOT NULL UNIQUE,
