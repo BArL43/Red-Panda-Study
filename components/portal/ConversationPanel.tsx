@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { api, formatDate } from "./api";
 
 type Conversation = {
@@ -31,22 +31,48 @@ export function ConversationPanel({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const cursorRef = useRef(0);
+  const selectionRef = useRef(0);
   const effectiveSelected = conversations.some((item) => item.id === selected)
     ? selected
     : initialID && conversations.some((item) => item.id === initialID)
       ? initialID
       : conversations[0]?.id ?? 0;
 
+  useEffect(() => {
+    if (selectionRef.current === effectiveSelected) return;
+    selectionRef.current = effectiveSelected;
+    cursorRef.current = 0;
+    setMessages([]);
+  }, [effectiveSelected]);
+
+  const appendMessages = useCallback((incoming: Message[]) => {
+    setMessages((current) => {
+      const known = new Set(current.map((message) => message.id));
+      return [...current, ...incoming.filter((message) => !known.has(message.id))];
+    });
+  }, []);
+
   const load = useCallback(async () => {
     if (!effectiveSelected) return;
+    const selectedID = effectiveSelected;
+    const afterID = cursorRef.current;
     try {
-      const result = await api<{ messages: Message[] }>(`/conversations/${effectiveSelected}`);
-      setMessages(result.messages);
+      const result = await api<{ messages: Message[]; next_after_id?: number }>(
+        `/conversations/${selectedID}${afterID ? `?after_id=${afterID}` : ""}`,
+      );
+      if (selectionRef.current !== selectedID) return;
+      if (afterID === 0 && cursorRef.current === 0) {
+        setMessages(result.messages);
+      } else {
+        appendMessages(result.messages);
+      }
+      cursorRef.current = Number(result.next_after_id) || cursorRef.current;
       setError("");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Чат недоступен");
     }
-  }, [effectiveSelected]);
+  }, [appendMessages, effectiveSelected]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +98,8 @@ export function ConversationPanel({
         method: "POST",
         body: JSON.stringify({ body: draft }),
       });
-      setMessages((current) => [...current, result.message]);
+      appendMessages([result.message]);
+      cursorRef.current = Math.max(cursorRef.current, result.message.id);
       setDraft("");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Сообщение не отправлено");
