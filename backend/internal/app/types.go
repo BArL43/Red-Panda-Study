@@ -81,6 +81,11 @@ type Message struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type MessagePage struct {
+	Messages    []Message `json:"messages"`
+	NextAfterID int64     `json:"next_after_id"`
+}
+
 type Task struct {
 	ID          int64      `json:"id"`
 	StudentID   int64      `json:"student_id"`
