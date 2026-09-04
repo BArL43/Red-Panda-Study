@@ -81,7 +81,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if !databaseReady {
 		status = http.StatusServiceUnavailable
 	}
-	commit := strings.TrimSpace(os.Getenv("RENDER_GIT_COMMIT"))
+	commit := strings.TrimSpace(os.Getenv("APP_GIT_COMMIT"))
 	if commit == "" {
 		commit = "unknown"
 	}
