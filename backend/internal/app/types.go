@@ -119,7 +119,6 @@ type MentorStudent struct {
 	OpenTasks int            `json:"open_tasks"`
 }
 
-
 type CompassSnapshot struct {
 	ID          int64           `json:"id"`
 	StudentID   int64           `json:"student_id"`

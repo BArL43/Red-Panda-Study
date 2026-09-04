@@ -16,14 +16,14 @@ import (
 )
 
 type Server struct {
-	cfg                       Config
-	store                     *Store
-	consultationLimiter       *ipLimiter
-	publicChatReadLimiter     *ipLimiter
-	publicChatWriteLimiter    *ipLimiter
-	invitationLimiter         *ipLimiter
-	adminLoginLimiter         *ipLimiter
-	portalLoginLimiter        *ipLimiter
+	cfg                    Config
+	store                  *Store
+	consultationLimiter    *ipLimiter
+	publicChatReadLimiter  *ipLimiter
+	publicChatWriteLimiter *ipLimiter
+	invitationLimiter      *ipLimiter
+	adminLoginLimiter      *ipLimiter
+	portalLoginLimiter     *ipLimiter
 }
 
 func NewServer(cfg Config, store *Store) http.Handler {
