@@ -57,11 +57,14 @@ export function MentorDashboard() {
 
   useEffect(() => {
     if (!selected) {
-      setCompass(null);
-      return;
+      const timer = window.setTimeout(() => {
+        setCompass(null);
+        setCompassLoading(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
     const controller = new AbortController();
-    setCompassLoading(true);
+    const loadingTimer = window.setTimeout(() => setCompassLoading(true), 0);
     void api<{ snapshot: CompassSnapshot }>(`/students/${selected}/compass`, { signal: controller.signal })
       .then(({ snapshot }) => setCompass(snapshot))
       .catch((loadError) => {
@@ -73,7 +76,10 @@ export function MentorDashboard() {
       .finally(() => {
         if (!controller.signal.aborted) setCompassLoading(false);
       });
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(loadingTimer);
+      controller.abort();
+    };
   }, [selected]);
 
   const createTask = async (event: FormEvent<HTMLFormElement>) => {

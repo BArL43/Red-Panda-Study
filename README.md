@@ -1,137 +1,191 @@
 # Red Panda Study
 
-## Структура проекта
+[![CI](https://github.com/BArL43/Red-Panda-Study/actions/workflows/self-hosted.yml/badge.svg)](https://github.com/BArL43/Red-Panda-Study/actions/workflows/self-hosted.yml)
 
-- frontend находится в корне репозитория;
-- Go API находится в `backend/`;
-- общий Blueprint для Render находится в `render.yaml`;
-- SQLite хранится на постоянном диске backend-сервиса.
+Red Panda Study (RPS) — full-stack платформа сопровождения поступления в зарубежные университеты. Проект объединяет публичный сайт, кабинеты ученика, наставника и администратора, приглашения и onboarding, задачи, чат и Red Panda Compass — инструмент подбора образовательной стратегии с rules-first логикой и опциональным AI-обогащением.
+
+Проект сделан как собственная учебная продуктовая разработка с основным фокусом на Go backend, HTTP API, хранение данных, авторизацию и эксплуатацию сервиса.
+
+## Что реализовано
+
+- публичная часть сайта с описанием услуг, стран и консультаций;
+- роли `student`, `mentor`, `admin`;
+- invite-flow: администратор создаёт приглашение, пользователь активирует его и получает доступ к кабинету;
+- отдельная авторизация администраторов и пользователей портала;
+- кабинеты ученика, наставника и администратора;
+- назначение наставников и управление задачами ученика;
+- публичные и авторизованные диалоги с историей сообщений и read-state;
+- Red Panda Compass с сохранением профиля и результатов анализа;
+- каталог университетских программ и deterministic rules-based shortlist;
+- опциональное AI-обогащение Compass через VibeMarketolog API с fallback на rules engine;
+- учёт годовых подписок и заявок на консультацию;
+- audit log для административных действий;
+- self-hosted deployment через Docker Compose и Caddy.
+
+## Архитектура
+
+```text
+Browser
+   |
+   v
+Caddy :80/:443
+   |
+   v
+Frontend / Worker
+React + Next-compatible App Router + Vinext/Vite
+   |
+   | same-origin /api/*
+   v
+Go API :8788
+net/http
+   |
+   v
+SQLite (WAL)
+```
+
+В production публичным является только Caddy. Frontend и Go API находятся во внутренней Docker-сети. Браузер работает с API через same-origin `/api/*`, поэтому session cookies остаются first-party.
+
+### Backend
+
+Go API находится в `backend/` и использует стандартный `net/http` router.
+
+Основные группы endpoint'ов:
+
+- `/api/v1/consultations` — заявки на консультацию;
+- `/api/v1/chat/*` и `/api/v1/conversations/*` — публичный и кабинетный чат;
+- `/api/v1/invitations/*` — preview и активация приглашений;
+- `/api/v1/admin/*` — административные операции;
+- `/api/v1/portal/login`, `/api/v1/me`, `/api/v1/logout` — portal auth;
+- `/api/v1/student/*`, `/api/v1/mentor/*`, `/api/v1/tasks/*` — кабинеты и задачи;
+- `/api/v1/compass/*` — сохранение и чтение Compass-анализа.
+
+SQLite работает в WAL mode с foreign keys и busy timeout. На уровне схемы используются внешние ключи, ограничения ролей/статусов, индексы и уникальное назначение одного активного наставника ученику.
+
+## Backend security
+
+В проекте реализованы базовые защитные механизмы, которые важны для обычного web backend:
+
+- серверные сессии со случайными токенами; в БД хранится только SHA-256 hash токена;
+- `HttpOnly` cookies, `Secure` в production и контролируемый `SameSite`;
+- role-based authorization на стороне backend;
+- пароли хэшируются PBKDF2-HMAC-SHA256 с уникальной солью;
+- минимальная длина пароля — 12 символов, production admin password рекомендуется 16+;
+- CORS/origin checks для изменяющих запросов;
+- security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`);
+- rate limiting для login, invitations и chat/consultation endpoints;
+- ограничение размера JSON-body и `DisallowUnknownFields`;
+- invite tokens и session tokens не сохраняются в открытом виде;
+- runtime secrets и SQLite-файлы исключены из Git.
 
 ## Red Panda Compass
 
-The student dashboard includes a rules-first admissions strategy tool. Its
-curated catalog and deterministic checks always produce a 3–7 program
-shortlist, budget and language checks, missing items, scenarios, and a parent
-report. When `VIBE_API_KEY` is configured on the frontend service, the
-server-side Worker enriches that fixed shortlist through the synchronous
-VibeMarketolog Agent API text endpoint.
+Compass строится по принципу **rules first**.
 
-Copy `.env.example` to `.env.local` only for local development. Keep
-`VIBE_API_KEY` server-side and never prefix it with `NEXT_PUBLIC_`.
-`VIBE_MODEL` defaults to `gpt-5.6-sol`. The rules engine remains available if
-the external AI service is unavailable or its response fails validation.
+1. Профиль ученика валидируется на сервере.
+2. Deterministic rules engine формирует shortlist программ, проверяет бюджет, язык и недостающие данные.
+3. Базовый результат работает без внешнего AI-провайдера.
+4. Если настроен `VIBE_API_KEY`, результат может быть дополнен AI-пояснением.
+5. Анализ сохраняется в Go backend и доступен ученику и назначенному наставнику.
 
-## Render
+AI-интеграция не является единственной точкой отказа: при недоступном ключе, лимите или ошибке провайдера пользователь получает rules-based результат.
 
-See `RENDER_DEPLOY.md`. Do not commit real secrets or a populated SQLite file.
+## Стек
 
-Program costs and deadline windows are planning references. The UI links to
-official admissions pages and requires expert verification before a final
-strategy is approved.
+**Backend:** Go, `net/http`, SQLite, `database/sql`  
+**Frontend:** React 19, Next-compatible App Router, Vinext, Vite, TypeScript  
+**AI integration:** VibeMarketolog API  
+**Infrastructure:** Docker, Docker Compose, Caddy  
+**CI:** GitHub Actions  
+**Deployment:** self-hosted Linux VPS
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+## Структура репозитория
 
-## Prerequisites
-
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
-
-## Sites Lifecycle
-
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
-
-This starter does not use `wrangler.jsonc`.
-
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
-
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```text
+app/                    routes и страницы frontend
+components/             UI и portal-компоненты
+lib/                    frontend/domain logic, Compass и university data
+worker/                 frontend runtime, API proxy и Compass orchestration
+backend/
+  cmd/server/            entry point Go API
+  internal/app/          handlers, store, auth, domain types
+  Dockerfile
+deploy/
+  compose.yml            production stack
+  Caddyfile              HTTPS reverse proxy
+  backup.sh              SQLite backup helper
+.github/workflows/       CI
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## Локальный запуск
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+### Backend
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+```bash
+cd backend
+cp .env.example .env
+go run ./cmd/server
+```
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+По умолчанию API слушает порт `8788`.
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+### Frontend
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+В другом терминале:
 
-## Diagnostic Commands
+```bash
+cp .env.example .env.local
+npm ci
+npm run dev
+```
 
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+Для локальной разработки frontend проксирует `/api` на `http://127.0.0.1:8788`.
 
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+## Проверки
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+Frontend:
 
-## Learn More
+```bash
+npm ci
+npm run build
+```
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Backend:
+
+```bash
+cd backend
+go test ./...
+```
+
+GitHub Actions дополнительно проверяет frontend build, Go API и Docker-образы.
+
+## Deployment
+
+Поддерживаемый production-вариант — Linux VPS с Docker Compose.
+
+```bash
+cd deploy
+cp .env.example .env
+# заполнить APP_DOMAIN, ADMIN_EMAIL, ADMIN_PASSWORD и при необходимости VIBE_API_KEY
+docker compose up -d --build
+```
+
+Caddy автоматически поднимает HTTPS, а SQLite хранится в persistent Docker volume.
+
+Подробная инструкция: [`SELF_HOSTED_DEPLOY.md`](SELF_HOSTED_DEPLOY.md).
+
+## Secrets and data
+
+В репозитории должны находиться только `.env.example` без реальных значений. Нельзя коммитить:
+
+- `.env` / `.env.local`;
+- `VIBE_API_KEY`;
+- admin credentials;
+- production SQLite database;
+- TLS/private key files;
+- backups с пользовательскими данными.
+
+## Ограничения
+
+Проект рассчитан на раннюю эксплуатацию и небольшое количество пользователей. SQLite выбран осознанно для текущего масштаба; переход на PostgreSQL при росте нагрузки остаётся отдельной архитектурной задачей.
+
+Данные о стоимости программ и дедлайнах в Compass являются planning references. Для финальной стратегии поступления требуется проверка по официальным страницам университетов.

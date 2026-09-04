@@ -313,7 +313,6 @@ func (s *Store) ConversationForUser(ctx context.Context, user SessionUser, id, a
 	return item, page, nil
 }
 
-
 func (s *Store) UpdateConversationStatus(ctx context.Context, user SessionUser, conversationID int64, status string) (Conversation, error) {
 	if status != "open" && status != "closed" {
 		return Conversation{}, ErrConflict

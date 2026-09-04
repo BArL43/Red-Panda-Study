@@ -24,10 +24,13 @@ export function InviteAccept() {
   useEffect(() => {
     const tokenFromFragment = new URLSearchParams(window.location.hash.slice(1)).get("token");
     if (tokenFromFragment) {
-      setToken(tokenFromFragment);
       window.history.replaceState(null, "", window.location.pathname);
     }
-    setTokenReady(true);
+    const timer = window.setTimeout(() => {
+      setToken(tokenFromFragment ?? "");
+      setTokenReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

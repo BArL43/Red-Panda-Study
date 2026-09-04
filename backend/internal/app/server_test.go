@@ -329,7 +329,6 @@ func TestTaskAndAssignmentRejectInvalidTargetsAndRepairConversation(t *testing.T
 	}
 }
 
-
 func TestCompassAnalysisPersistsAndMentorCanReadAssignedStudent(t *testing.T) {
 	api := newTestAPI(t)
 	api.loginAdmin()
@@ -375,7 +374,6 @@ func TestCompassAnalysisPersistsAndMentorCanReadAssignedStudent(t *testing.T) {
 	}
 }
 
-
 func TestPublicRateLimitBudgetsAreSeparated(t *testing.T) {
 	server := &Server{
 		consultationLimiter:    newIPLimiter(10, time.Hour),
@@ -403,7 +401,6 @@ func TestPublicRateLimitBudgetsAreSeparated(t *testing.T) {
 		t.Fatal("lead form must not be blocked by public chat polling")
 	}
 }
-
 
 func TestChatCursorKeepsNewestMessagesAfterFiveHundred(t *testing.T) {
 	api := newTestAPI(t)
@@ -444,7 +441,6 @@ func TestChatCursorKeepsNewestMessagesAfterFiveHundred(t *testing.T) {
 	}
 }
 
-
 func TestPortalUsersCanSignInAfterSessionLoss(t *testing.T) {
 	api := newTestAPI(t)
 	api.loginAdmin()
@@ -476,7 +472,6 @@ func TestPortalUsersCanSignInAfterSessionLoss(t *testing.T) {
 	}, http.StatusUnauthorized)
 }
 
-
 func TestConversationCanBeClosedAndReopensOnNewMessage(t *testing.T) {
 	api := newTestAPI(t)
 	api.loginAdmin()
@@ -500,7 +495,6 @@ func TestConversationCanBeClosedAndReopensOnNewMessage(t *testing.T) {
 		t.Fatalf("new visitor message did not reopen conversation: %v", overview)
 	}
 }
-
 
 func TestConversationUnreadIsPerUserAndClearsOnRead(t *testing.T) {
 	api := newTestAPI(t)
@@ -527,7 +521,6 @@ func TestConversationUnreadIsPerUserAndClearsOnRead(t *testing.T) {
 		t.Fatalf("opening conversation did not clear admin unread count: %v", overview)
 	}
 }
-
 
 func TestStudentProgressIsCalculatedFromTasks(t *testing.T) {
 	api := newTestAPI(t)
@@ -568,7 +561,6 @@ func TestStudentProgressIsCalculatedFromTasks(t *testing.T) {
 		t.Fatalf("reopened task must lower progress: %v", profile)
 	}
 }
-
 
 func TestInvitationTokenUsesFragmentAndCanBeRevoked(t *testing.T) {
 	api := newTestAPI(t)
