@@ -1,4 +1,4 @@
-/** Cloudflare Worker entry point for the vinext-starter template. */
+/** Frontend runtime entry point for the Vinext/Vite application. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import {
@@ -19,7 +19,6 @@ const compassUsage = new Map<number, CompassUsage>();
 
 interface Env {
   ASSETS: Fetcher;
-  DB?: D1Database;
   GO_API_URL?: string;
   GO_API_HOSTPORT?: string;
   VIBE_API_KEY?: string;
@@ -164,7 +163,6 @@ function apiOrigin(env?: Env) {
   return (configured || DEFAULT_API_ORIGIN).replace(/\/$/, "");
 }
 
-
 async function saveCompassResponse(
   request: Request,
   env: Env,
@@ -308,12 +306,6 @@ async function handleCompass(request: Request, env: Env) {
   }
 }
 
-// Image security config. SVG sources with .svg extension auto-skip the
-// optimization endpoint on the client side (served directly, no proxy).
-// To route SVGs through the optimizer (with security headers), set
-// dangerouslyAllowSVG: true in next.config.js and uncomment below:
-// const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
-
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -325,7 +317,6 @@ const worker = {
     if (url.pathname === "/api/compass/status") {
       return handleCompassStatus(request, env);
     }
-
 
     if (url.pathname === "/api/compass/analyze") {
       return handleCompass(request, env);
