@@ -6,6 +6,20 @@ Red Panda Study (RPS) — full-stack платформа сопровождени
 
 Проект сделан как собственная учебная продуктовая разработка с основным фокусом на Go backend, HTTP API, хранение данных, авторизацию и эксплуатацию сервиса.
 
+## Быстрый просмотр Go backend
+
+Если вы смотрите репозиторий как backend-портфолио, основные точки входа:
+
+- [`backend/cmd/server/main.go`](backend/cmd/server/main.go) — запуск API, конфигурация HTTP server, фоновые задачи и graceful shutdown;
+- [`backend/internal/app/server.go`](backend/internal/app/server.go) — маршрутизация, middleware и сборка HTTP API;
+- [`backend/internal/app/handlers.go`](backend/internal/app/handlers.go) — HTTP handlers и работа с запросами;
+- [`backend/internal/app/auth.go`](backend/internal/app/auth.go) — password hashing, session/token helpers и auth-механика;
+- [`backend/internal/app/store.go`](backend/internal/app/store.go) и `store_*.go` — SQLite schema/data access, транзакционные операции для chat, invites, portal и Compass;
+- [`backend/internal/app/server_test.go`](backend/internal/app/server_test.go) — интеграционные HTTP-тесты основных backend-сценариев;
+- [`.github/workflows/self-hosted.yml`](.github/workflows/self-hosted.yml) — CI: frontend build, `gofmt`, `go vet`, race tests и Docker smoke test.
+
+Backend намеренно опирается в основном на стандартную библиотеку Go: в `go.mod` единственная runtime-зависимость — SQLite driver.
+
 ## Что реализовано
 
 - публичная часть сайта с описанием услуг, стран и консультаций;
